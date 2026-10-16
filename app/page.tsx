@@ -1,66 +1,11 @@
 ﻿"use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect } from "react";
+import CtaBanner from "../components/CtaBanner";
 import PhoneLiveFeed from "../components/PhoneLiveFeed";
-
-type NavigationLink = { label: string; href: string };
-type FooterLink = NavigationLink;
-
-/** Routes shared by the header and footer so every navigation link has a target. */
-const navigationLinks: NavigationLink[] = [
-  { label: "How it works", href: "#our-approach" },
-  { label: "Features", href: "#real-time" },
-  { label: "For venues", href: "#venues" },
-  { label: "FAQ", href: "#venue-challenges" },
-];
-
-/** Footer labels match the design while destinations stay shared with the header. */
-const footerLinks: FooterLink[] = navigationLinks.map((link) => ({
-  ...link,
-  label: link.label === "For venues" ? "Venues" : link.label,
-}));
-
-type SocialLink = {
-  label: string;
-  href: string;
-  icon: string;
-  width: number;
-  height: number;
-};
-
-/** Social destinations and icon assets are kept together to prevent repeated markup. */
-const socialLinks: SocialLink[] = [
-  {
-    label: "Instagram",
-    href: "https://www.instagram.com/",
-    icon: "/icons/instagram.svg",
-    width: 17,
-    height: 17,
-  },
-  {
-    label: "LinkedIn",
-    href: "https://www.linkedin.com/",
-    icon: "/icons/linkedin.svg",
-    width: 16,
-    height: 15,
-  },
-  {
-    label: "X",
-    href: "https://x.com/",
-    icon: "/icons/twitter.svg",
-    width: 18,
-    height: 18,
-  },
-];
-
-/** Footer copy stays data-driven alongside its shared link and social lists. */
-const footerCopy = {
-  tagline: "Find places. Find people. Find your way",
-  copyright: "2026, Fplaces All rights reserved",
-  newsletter: "Don't miss our future updates! Get Subscribed Today!",
-};
+import SiteFooter from "../components/SiteFooter";
+import SiteNavbar from "../components/SiteNavbar";
 
 const venueCategories = [
   {
@@ -193,122 +138,7 @@ function VenuePostCard({ post }: { post: (typeof liveVenuePosts)[number] }) {
   );
 }
 
-/** Renders a titled footer link group using the site's shared navigation data. */
-function FooterLinkList({
-  title,
-  links,
-}: {
-  title: string;
-  links: FooterLink[];
-}) {
-  return (
-    <nav className="ft-column ft-links-column reveal-item" data-reveal-item aria-label="Footer">
-      <h2 className="ft-heading">{title}</h2>
-      <ul className="ft-links">
-        {links.map((link) => (
-          <li key={link.label}>
-            <a href={link.href}>{link.label}</a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
-/** Renders the social destinations from their typed asset list. */
-function SocialLinks({ links }: { links: SocialLink[] }) {
-  return (
-    <ul className="ft-social-links">
-      {links.map((link) => (
-        <li key={link.label}>
-          <a href={link.href} aria-label={link.label} target="_blank" rel="noreferrer">
-            <Image
-              src={link.icon}
-              alt=""
-              width={link.width}
-              height={link.height}
-            />
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** Provides validated front-end newsletter feedback without assuming an API. */
-function NewsletterForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const submitTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (submitTimer.current !== null) {
-        window.clearTimeout(submitTimer.current);
-      }
-    },
-    [],
-  );
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) {
-      setFeedback("Enter a valid email address.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setFeedback("");
-    // TODO: Send the validated address to the newsletter subscription API.
-    submitTimer.current = window.setTimeout(() => {
-      form.reset();
-      setIsSubmitting(false);
-      setFeedback("Thanks, you're subscribed.");
-      submitTimer.current = null;
-    }, 600);
-  };
-
-  return (
-    <form
-      className="ft-newsletter-form"
-      id="get-started"
-      onSubmit={handleSubmit}
-    >
-      <label className="ft-email-label" htmlFor="ft-email">
-        Email address
-      </label>
-      <div className="ft-form-row">
-        <input
-          className="ft-email-input"
-          id="ft-email"
-          name="email"
-          type="email"
-          placeholder="Enter email address"
-          autoComplete="email"
-          required
-          disabled={isSubmitting}
-          onInvalid={() => setFeedback("Enter a valid email address.")}
-          onChange={() => setFeedback("")}
-        />
-        <button
-          className="primary-button ft-submit-button"
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Sending…" : "Submit"}
-        </button>
-      </div>
-      <p className="ft-form-feedback" aria-live="polite">
-        {feedback}
-      </p>
-    </form>
-  );
-}
-
 export default function Home() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   useEffect(() => {
     const revealItems = document.querySelectorAll<HTMLElement>(
       "[data-reveal-item]",
@@ -398,83 +228,7 @@ export default function Home() {
   return (
     <main className="landing">
       <section className="hero" aria-labelledby="hero-title">
-        <header className="site-header">
-          <Link className="brand" href="/" aria-label="Fplaces home">
-            <Image
-              src="/img/fplace.png"
-              alt="Fplaces"
-              width={196}
-              height={50}
-              priority
-            />
-          </Link>
-
-          <nav className="navigation" aria-label="Main navigation">
-            {navigationLinks.map((link) => (
-              <a key={link.label} href={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="header-actions">
-            <a className="header-button header-button-light" href="#venues">
-              Partner with us
-            </a>
-            <a className="header-button header-button-dark" href="#how-it-works">
-              See it in action
-            </a>
-            <button
-              className={`menu-toggle${isMobileMenuOpen ? " is-open" : ""}`}
-              type="button"
-              aria-label={isMobileMenuOpen ? "Close navigation" : "Open navigation"}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="mobile-navigation"
-              onClick={() => setIsMobileMenuOpen((open) => !open)}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
-          </div>
-
-          <nav
-            className={`mobile-navigation${isMobileMenuOpen ? " is-open" : ""}`}
-            id="mobile-navigation"
-            aria-label="Mobile navigation"
-            aria-hidden={!isMobileMenuOpen}
-            inert={!isMobileMenuOpen}
-          >
-            {navigationLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                tabIndex={isMobileMenuOpen ? 0 : -1}
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="mobile-navigation-actions">
-              <a
-                className="header-button header-button-light"
-                href="#venues"
-                onClick={() => setIsMobileMenuOpen(false)}
-                tabIndex={isMobileMenuOpen ? 0 : -1}
-              >
-                Partner with us
-              </a>
-              <a
-                className="header-button header-button-dark"
-                href="#how-it-works"
-                onClick={() => setIsMobileMenuOpen(false)}
-                tabIndex={isMobileMenuOpen ? 0 : -1}
-              >
-                See it in action
-              </a>
-            </div>
-          </nav>
-        </header>
+        <SiteNavbar page="home" />
 
         <div className="hero-content">
           <div className="hero-copy">
@@ -700,7 +454,7 @@ export default function Home() {
             >
               The crowd already knows.
               <br />
-              Now so do you
+              Now you do
             </h2>
             <p className="real-time-description reveal-item" data-reveal-item>
               From short lines to great food stops, live updates from the people
@@ -875,81 +629,15 @@ export default function Home() {
                 </span>
               </li>
             </ul>
-            <a className="fv-cta fv-reveal" href="#venue-challenges">
+            <a className="fv-cta fv-reveal" href="/venues#contact">
               Talk to our team
             </a>
           </div>
         </div>
       </section>
 
-      {/* Final invitation to try Fplaces. */}
-      <section className="cta-section" aria-labelledby="cta-title">
-        <div className="cta-banner">
-          <Image
-            className="cta-background"
-            src="/img/Frame 270.png"
-            alt=""
-            fill
-            sizes="(max-width: 767px) calc(100vw - 32px), 1282px"
-            aria-hidden="true"
-          />
-          <div className="cta-content">
-            <h2 className="cta-title reveal-item" data-reveal-item id="cta-title">
-              Ready to explore your next experience?
-            </h2>
-            <p className="cta-description reveal-item" data-reveal-item>
-              Open fplaces at any supported venue and
-              <br />
-              find your way in seconds.
-            </p>
-            <a
-              className="secondary-button cta-button reveal-item"
-              data-reveal-item
-              href="#get-started"
-            >
-              Get started
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Site links and front-end newsletter sign-up. */}
-      <footer className="ft-footer">
-        <div className="ft-container">
-          <div className="ft-columns">
-            <div className="ft-column ft-brand-column reveal-item" data-reveal-item>
-              <Link className="ft-brand" href="/" aria-label="Fplaces home">
-                <Image
-                  src="/img/fplace.png"
-                  alt="Fplaces"
-                  width={196}
-                  height={50}
-                />
-              </Link>
-              <p className="ft-tagline">{footerCopy.tagline}</p>
-              <SocialLinks links={socialLinks} />
-              <p className="ft-copyright">
-                <span aria-hidden="true">©</span>
-                <span>{footerCopy.copyright}</span>
-              </p>
-            </div>
-
-            <FooterLinkList title="Useful links" links={footerLinks} />
-
-            <section
-              className="ft-column ft-newsletter-column reveal-item"
-              data-reveal-item
-              aria-labelledby="ft-newsletter-title"
-            >
-              <h2 className="ft-heading" id="ft-newsletter-title">
-                Subscribe now
-              </h2>
-              <p className="ft-newsletter-copy">{footerCopy.newsletter}</p>
-              <NewsletterForm />
-            </section>
-          </div>
-        </div>
-      </footer>
+      <CtaBanner />
+      <SiteFooter page="home" />
     </main>
   );
 }
