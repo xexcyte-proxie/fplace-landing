@@ -272,19 +272,24 @@ export default function Home() {
           </div>
 
           <figure className="hero-visual">
-            <div className="visual-frame">
-              <Image
-                src="/img/navigation.png"
-                alt="Fplaces indoor navigation guiding visitors through an airport"
-                fill
-                priority
-                sizes="(max-width: 760px) 100vw, 50vw"
-                className="navigation-image"
-              />
+            <div className="hero-media">
+              <span className="hero-glow" aria-hidden="true" />
+              <div className="visual-frame">
+                <Image
+                  src="/img/navigation.png"
+                  alt="Fplaces indoor navigation guiding visitors through an airport"
+                  fill
+                  priority
+                  sizes="(max-width: 760px) 100vw, 50vw"
+                  className="navigation-image"
+                />
+              </div>
             </div>
-            <figcaption>
-              Your real-time navigation and social companion for any large venue.
-            </figcaption>
+            <div className="hero-caption">
+              <figcaption>
+                Your real-time navigation and social companion for any large venue.
+              </figcaption>
+            </div>
           </figure>
         </div>
       </section>
@@ -314,14 +319,17 @@ export default function Home() {
                 data-reveal-item
                 key={category.title}
               >
-                <span className="venue-icon-tile" aria-hidden="true">
-                  <Image
-                    src={category.icon}
-                    alt=""
-                    width={category.width}
-                    height={category.height}
-                  />
-                </span>
+<span className="venue-icon-tile" aria-hidden="true">
+                    <span
+                      className="venue-icon"
+                      style={{
+                        width: category.width,
+                        height: category.height,
+                        maskImage: `url(${category.icon})`,
+                        WebkitMaskImage: `url(${category.icon})`,
+                      }}
+                    />
+                  </span>
                 <h3>{category.title}</h3>
                 <p>{category.description}</p>
               </article>

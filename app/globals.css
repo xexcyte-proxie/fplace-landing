@@ -56,16 +56,16 @@ a {
 
 .hero {
   position: relative;
-  padding: 0 0 115px;
+  padding: 0 0 0;
   overflow: clip;
   background: linear-gradient(115deg, #e98238 0%, #e07a33 56%, #e47b32 100%);
 }
 
 .site-header {
-  width: min(100%, 1440px);
+  width: min(100%, 1800px);
   min-height: 90px;
-  margin: 0 auto;
-  padding: 0 clamp(24px, 5.42vw, 78px);
+  margin-inline: auto;
+  padding-inline: clamp(24px, 5.5vw, 110px);
   position: relative;
   z-index: 1;
   display: grid;
@@ -166,22 +166,25 @@ a {
 }
 
 .hero-content {
-  width: min(100%, 1440px);
-  margin: 0 auto;
+  width: min(100%, 1800px);
+  margin-inline: auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 650px;
-  align-items: center;
-  gap: 48px;
-  padding: 126px clamp(24px, 5.42vw, 78px) 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 0;
+  padding-block: clamp(72px, 7.6vw, 150px) clamp(40px, 3.9vw, 80px);
+  padding-inline: clamp(24px, 5.5vw, 110px);
 }
 
 .hero-copy {
+  position: relative;
+  z-index: 1;
   max-width: 550px;
-  padding: 0 0 4px 16px;
+  padding: 0 0 4px 1.3vw;
 }
 
 .eyebrow {
-  margin: 0 0 24px;
+  margin: 0 0 40px;
   color: rgba(255, 255, 255, 0.9);
   font-size: 14px;
   font-weight: 300;
@@ -190,12 +193,13 @@ a {
 }
 
 .hero h1 {
-  margin: 0;
+  margin: 0 0 clamp(24px, 2.5vw, 48px);
   color: #fff;
-  font-size: 48px;
-  font-weight: 300;
+  font-size: clamp(36px, 3.47vw, 96px);
+  font-weight: 700;
   letter-spacing: -0.035em;
-  line-height: 1.25;
+  line-height: 1.2;
+  text-indent: -0.04em;
 }
 
 .hero h1 span {
@@ -209,15 +213,15 @@ a {
 
 .hero h1 em {
   color: #156068;
-  font-style: normal;
+  font-style: italic;
   font-weight: 300;
 }
 
 .hero-description {
-  max-width: 360px;
-  margin: 26px 0 0;
+  max-width: 25vw;
+  margin: 0 0 clamp(60px, 6.6vw, 130px);
   color: rgba(255, 255, 255, 0.92);
-  font-size: 14px;
+  font-size: clamp(14px, 1.1vw, 21px);
   font-weight: 300;
   line-height: 1.5;
 }
@@ -226,7 +230,7 @@ a {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 60px;
+  margin-top: 0;
 }
 
 .primary-button,
@@ -256,7 +260,7 @@ a {
 
 .hero-visual {
   width: 100%;
-  max-width: 680px;
+  max-width: none;
   margin: 0;
   justify-self: end;
 }
@@ -264,7 +268,7 @@ a {
 .visual-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 650 / 410;
+  aspect-ratio: 650 / 405;
   overflow: hidden;
   border-radius: 26px;
   background: rgba(255, 255, 255, 0.12);
@@ -275,12 +279,76 @@ a {
   object-position: center 43%;
 }
 
+.hero-caption {
+  display: flex;
+  justify-content: center;
+  width: 110%;
+  margin: 28px 0 0 -5%;
+}
+
 .hero-visual figcaption {
-  margin-top: 12px;
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 12px;
-  font-weight: 300;
+  font-size: clamp(14px, 1.45vw, 30px);
+  font-weight: 400;
+  line-height: 1.35;
   text-align: center;
+  white-space: nowrap;
+}
+
+/* ===== HERO GLOW ===== */
+.hero-media {
+  position: relative;
+}
+
+.hero-glow {
+  position: absolute;
+  width: 101%;
+  aspect-ratio: 1 / 1;
+  left: -19%;
+  top: -100%;
+  border-radius: 50%;
+  background: #FDC72E;
+  opacity: 0.37;
+  filter: blur(180px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-media .visual-frame,
+.hero-caption {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 1024px) {
+  .hero-glow {
+    width: 80%;
+    filter: blur(100px);
+  }
+
+  .hero-description {
+    margin-bottom: 40px;
+  }
+
+  .hero-caption {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .hero-visual figcaption {
+    width: auto;
+    font-size: clamp(14px, 1.55vw, 16px);
+    white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-glow {
+    filter: blur(70px);
+  }
 }
 
 .community-section {
@@ -350,9 +418,9 @@ a {
 }
 
 .venue-card:hover {
-  transform: translateY(-4px);
-  border-color: #f1d1ba;
-  box-shadow: 0 10px 24px rgb(4 19 21 / 8%);
+  transform: none;
+  border-color: var(--fplaces-card-border);
+  box-shadow: 0 3px 9px rgb(4 19 21 / 10%);
 }
 
 .venue-icon-tile {
@@ -377,6 +445,69 @@ a {
   max-width: 26px;
   max-height: 26px;
   object-fit: contain;
+}
+
+/* ===== VENUE ICON HOVER ===== */
+.venue-icon {
+  display: block;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  color: var(--fplaces-orange);
+  transition: color 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.venue-icon-tile {
+  cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .venue-icon-tile {
+    transition:
+      transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .venue-icon-tile:hover,
+  .venue-icon-tile:focus-visible {
+    transform: scale(1.1);
+    background: var(--hero-orange);
+    box-shadow: 0 0 0 6px rgb(224 122 51 / 15%);
+  }
+
+  .venue-icon-tile:hover .venue-icon,
+  .venue-icon-tile:focus-visible .venue-icon {
+    transform: rotate(-8deg);
+    color: #fff;
+  }
+
+  .venue-icon {
+    transition:
+      transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      color 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .venue-icon-tile,
+  .venue-icon {
+    transition: background-color 250ms ease, color 250ms ease, box-shadow 250ms ease;
+  }
+
+  .venue-icon-tile:hover,
+  .venue-icon-tile:focus-visible {
+    transform: none;
+  }
+
+  .venue-icon-tile:hover .venue-icon,
+  .venue-icon-tile:focus-visible .venue-icon {
+    transform: none;
+  }
 }
 
 .venue-card h3 {
@@ -1685,16 +1816,16 @@ a {
   .hero-content {
     grid-template-columns: 1fr;
     gap: 36px;
-    padding-top: 100px;
+    padding-top: 70px;
   }
 
   .hero-copy {
     max-width: 620px;
-    padding-left: 16px;
+    padding-left: 0;
   }
 
   .hero-visual {
-    width: min(100%, 650px);
+    width: 100%;
     max-width: 650px;
   }
 }
@@ -1848,7 +1979,7 @@ a {
   .hero-content {
     grid-template-columns: 1fr;
     gap: 42px;
-    padding: 84px clamp(24px, 5.42vw, 44px) 0;
+    padding: 72px clamp(24px, 5.42vw, 44px) 40px;
   }
 
   .hero-copy {

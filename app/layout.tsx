@@ -12,6 +12,7 @@ const kanit = Kanit({
   variable: "--font-kanit",
   subsets: ["latin"],
   weight: ["200", "300", "400", "500"],
+  style: ["normal", "italic"],
 });
 
 const krub = Krub({
