@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { getFooterLinks, type SitePage } from "./siteNavigation";
+import { isValidEmail } from "../lib/validation";
 
 const socialLinks = [
   {
@@ -75,37 +76,68 @@ function SocialLinks() {
   );
 }
 
+type ErrorResponse = {
+  error?: string;
+  errors?: { email?: string };
+};
+
 function NewsletterForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const submitTimer = useRef<number | null>(null);
+  const [feedbackType, setFeedbackType] = useState<"success" | "error" | "">("");
+  const [emailError, setEmailError] = useState("");
 
-  useEffect(
-    () => () => {
-      if (submitTimer.current !== null) {
-        window.clearTimeout(submitTimer.current);
-      }
-    },
-    [],
-  );
+  const showEmailError = (message: string) => {
+    setEmailError(message);
+    setFeedback(message);
+    setFeedbackType("error");
+  };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) return;
+
     const form = event.currentTarget;
-    if (!form.reportValidity()) {
-      setFeedback("Enter a valid email address.");
+    const formData = new FormData(form);
+    const email = String(formData.get("email") ?? "").trim();
+    const website = String(formData.get("website") ?? "").trim();
+
+    if (!isValidEmail(email)) {
+      showEmailError("Enter a valid email address.");
       return;
     }
 
+    setEmailError("");
     setIsSubmitting(true);
     setFeedback("");
-    // TODO: Send the validated address to the newsletter subscription API.
-    submitTimer.current = window.setTimeout(() => {
+    setFeedbackType("");
+
+    try {
+      const response = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, website }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as ErrorResponse | null;
+        if (data?.errors?.email) setEmailError(data.errors.email);
+        setFeedback(
+          data?.error ?? "Something went wrong, please try again or email us directly",
+        );
+        setFeedbackType("error");
+        return;
+      }
+
       form.reset();
-      setIsSubmitting(false);
       setFeedback("Thanks, you're subscribed.");
-      submitTimer.current = null;
-    }, 600);
+      setFeedbackType("success");
+    } catch {
+      setFeedback("Something went wrong, please try again or email us directly");
+      setFeedbackType("error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -125,10 +157,16 @@ function NewsletterForm() {
           type="email"
           placeholder="Enter email address"
           autoComplete="email"
+          aria-invalid={emailError ? true : undefined}
+          aria-describedby={emailError ? "ft-email-error" : undefined}
           required
           disabled={isSubmitting}
-          onInvalid={() => setFeedback("Enter a valid email address.")}
-          onChange={() => setFeedback("")}
+          onInvalid={() => showEmailError("Enter a valid email address.")}
+          onChange={() => {
+            setEmailError("");
+            setFeedback("");
+            setFeedbackType("");
+          }}
         />
         <button
           className="primary-button ft-submit-button"
@@ -138,7 +176,26 @@ function NewsletterForm() {
           {isSubmitting ? "Sending…" : "Submit"}
         </button>
       </div>
-      <p className="ft-form-feedback" aria-live="polite">
+      <div className="form-honeypot" aria-hidden="true">
+        <label htmlFor="ft-website">Website</label>
+        <input
+          id="ft-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          defaultValue=""
+        />
+      </div>
+      {emailError ? (
+        <p className="ft-field-error" id="ft-email-error">
+          {emailError}
+        </p>
+      ) : null}
+      <p
+        className={`ft-form-feedback${feedbackType ? ` is-${feedbackType}` : ""}`}
+        aria-live="polite"
+      >
         {feedback}
       </p>
     </form>

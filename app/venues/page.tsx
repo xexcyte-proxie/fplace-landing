@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import CtaBanner from "../../components/CtaBanner";
 import SiteFooter from "../../components/SiteFooter";
 import SiteNavbar from "../../components/SiteNavbar";
+import { validateContact, type ContactField, type FieldErrors } from "../../lib/validation";
 
 type VenueType = {
   title: string;
@@ -141,39 +142,76 @@ const emptyForm: ContactFormValues = {
   message: "",
 };
 
+type ErrorResponse = {
+  error?: string;
+  errors?: FieldErrors<ContactField>;
+};
+
 function ContactForm() {
   const [values, setValues] = useState(emptyForm);
+  const [honeypot, setHoneypot] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const sendTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (sendTimer.current !== null) {
-        window.clearTimeout(sendTimer.current);
-      }
-    },
-    [],
-  );
+  const [feedbackType, setFeedbackType] = useState<"success" | "error" | "">("");
+  const [errors, setErrors] = useState<FieldErrors<ContactField>>({});
 
   const updateValue = (field: keyof ContactFormValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
     setFeedback("");
+    setFeedbackType("");
+    setErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSending) return;
 
+    const validation = validateContact(values);
+
+    if (!validation.ok) {
+      setErrors(validation.errors);
+      setFeedback("Please check the highlighted fields.");
+      setFeedbackType("error");
+      return;
+    }
+
+    setErrors({});
     setIsSending(true);
     setFeedback("");
-    // TODO: connect to API/email service.
-    sendTimer.current = window.setTimeout(() => {
+    setFeedbackType("");
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, website: honeypot }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as ErrorResponse | null;
+        if (data?.errors) setErrors(data.errors);
+        setFeedback(
+          data?.error ?? "Something went wrong, please try again or email us directly",
+        );
+        setFeedbackType("error");
+        return;
+      }
+
       setValues(emptyForm);
+      setHoneypot("");
+      setFeedback("Thanks, we'll be in touch");
+      setFeedbackType("success");
+    } catch {
+      setFeedback("Something went wrong, please try again or email us directly");
+      setFeedbackType("error");
+    } finally {
       setIsSending(false);
-      setFeedback("Thanks, we'll be in touch soon.");
-      sendTimer.current = null;
-    }, 500);
+    }
   };
 
   return (
@@ -189,9 +227,16 @@ function ContactForm() {
             autoComplete="name"
             value={values.name}
             onChange={(event) => updateValue("name", event.target.value)}
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? "vn-name-error" : undefined}
             required
             disabled={isSending}
           />
+          {errors.name ? (
+            <p className="vn-field-error" id="vn-name-error">
+              {errors.name}
+            </p>
+          ) : null}
         </div>
         <div className="vn-field">
           <label htmlFor="vn-email">Work email</label>
@@ -203,9 +248,16 @@ function ContactForm() {
             autoComplete="email"
             value={values.email}
             onChange={(event) => updateValue("email", event.target.value)}
+            aria-invalid={errors.email ? true : undefined}
+            aria-describedby={errors.email ? "vn-email-error" : undefined}
             required
             disabled={isSending}
           />
+          {errors.email ? (
+            <p className="vn-field-error" id="vn-email-error">
+              {errors.email}
+            </p>
+          ) : null}
         </div>
         <div className="vn-field">
           <label htmlFor="vn-venue-name">Venue name</label>
@@ -216,9 +268,16 @@ function ContactForm() {
             placeholder="Rivers Stadium"
             value={values.venueName}
             onChange={(event) => updateValue("venueName", event.target.value)}
+            aria-invalid={errors.venueName ? true : undefined}
+            aria-describedby={errors.venueName ? "vn-venue-name-error" : undefined}
             required
             disabled={isSending}
           />
+          {errors.venueName ? (
+            <p className="vn-field-error" id="vn-venue-name-error">
+              {errors.venueName}
+            </p>
+          ) : null}
         </div>
         <div className="vn-field">
           <label htmlFor="vn-venue-type">Venue type</label>
@@ -228,6 +287,8 @@ function ContactForm() {
               name="venueType"
               value={values.venueType}
               onChange={(event) => updateValue("venueType", event.target.value)}
+              aria-invalid={errors.venueType ? true : undefined}
+              aria-describedby={errors.venueType ? "vn-venue-type-error" : undefined}
               disabled={isSending}
             >
               {venueOptions.map((option) => (
@@ -243,6 +304,11 @@ function ContactForm() {
               aria-hidden="true"
             />
           </div>
+          {errors.venueType ? (
+            <p className="vn-field-error" id="vn-venue-type-error">
+              {errors.venueType}
+            </p>
+          ) : null}
         </div>
       </div>
       <div className="vn-field vn-message-field">
@@ -253,13 +319,35 @@ function ContactForm() {
           placeholder="Tell us a little about your venue"
           value={values.message}
           onChange={(event) => updateValue("message", event.target.value)}
+          aria-invalid={errors.message ? true : undefined}
+          aria-describedby={errors.message ? "vn-message-error" : undefined}
           required
           disabled={isSending}
           rows={3}
         />
+        {errors.message ? (
+          <p className="vn-field-error" id="vn-message-error">
+            {errors.message}
+          </p>
+        ) : null}
+      </div>
+      <div className="form-honeypot" aria-hidden="true">
+        <label htmlFor="vn-website">Website</label>
+        <input
+          id="vn-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(event) => setHoneypot(event.target.value)}
+        />
       </div>
       <div className="vn-form-footer">
-        <p className="vn-form-feedback" aria-live="polite">
+        <p
+          className={`vn-form-feedback${feedbackType ? ` is-${feedbackType}` : ""}`}
+          aria-live="polite"
+        >
           {feedback}
         </p>
         <button className="vn-submit" type="submit" disabled={isSending}>

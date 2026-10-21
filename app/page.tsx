@@ -170,6 +170,22 @@ export default function Home() {
     };
   }, []);
 
+  // Pauses the hero caption typewriter loop while it is off-screen.
+  useEffect(() => {
+    const caption = document.querySelector<HTMLElement>(".hero-caption-text");
+    if (!caption || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        caption.classList.toggle("is-offscreen", !entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: "0px 0px -24px 0px" },
+    );
+    observer.observe(caption);
+
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     if (
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
@@ -286,8 +302,11 @@ export default function Home() {
               </div>
             </div>
             <div className="hero-caption">
-              <figcaption>
-                Your real-time navigation and social companion for any large venue.
+              <figcaption className="hero-caption-text">
+                <span className="hero-typed">
+                  Your real-time navigation and social companion for any large
+                  venue.
+                </span>
               </figcaption>
             </div>
           </figure>
@@ -462,7 +481,7 @@ export default function Home() {
             >
               The crowd already knows.
               <br />
-              Now you do
+              Now so do you
             </h2>
             <p className="real-time-description reveal-item" data-reveal-item>
               From short lines to great food stops, live updates from the people

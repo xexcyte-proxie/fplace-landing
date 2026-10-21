@@ -1,265 +1,98 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { useFeedScript, type FeedPost } from "@/lib/useFeedScript";
 
 const styles = new Proxy({} as Record<string, string>, {
   get: (_target, property: string | symbol) =>
     typeof property === "string" ? `plf-${property}` : undefined,
 });
 
-type FeedPost = {
-  handle: string;
-  initials: string;
-  avatar: string;
-  message: string;
-  likes: number;
-  comments: number;
-  key: string;
-};
-
-const initialPosts: FeedPost[] = [
-  {
-    handle: "@Nekky_lj232",
-    initials: "NL",
-    avatar: "orange",
-    message: "Line is moving slowly at Gate A, about 15 mins wait",
-    likes: 12,
-    comments: 0,
-    key: "nekky-initial",
-  },
-  {
-    handle: "@Keith453",
-    initials: "KH",
-    avatar: "gold",
-    message:
-      "Parking lot B is almost full. There are still spaces around Parking C",
-    likes: 8,
-    comments: 1,
-    key: "keith-initial",
-  },
-  {
-    handle: "@Jane_hys21",
-    initials: "JH",
-    avatar: "blue",
-    message:
-      "Large crowd at North entrance, please stay alert and follow staff instructions.",
-    likes: 15,
-    comments: 3,
-    key: "jane-initial",
-  },
-  {
-    handle: "@Charles013",
-    initials: "CS",
-    avatar: "purple",
-    message:
-      "People at the North Entrance should push through the barriers. Security can't stop everyone.",
-    likes: 22,
-    comments: 0,
-    key: "charles-initial",
-  },
-];
-
-const postScript: Omit<FeedPost, "key">[] = [
-  {
-    handle: "@Swiftotter_21",
-    initials: "SF",
-    avatar: "sky",
-    message: "Merch line at Gate C just cleared out. Under 5 mins now",
-    likes: 8,
-    comments: 2,
-  },
-  {
-    handle: "@HungryHawk",
-    initials: "HH",
-    avatar: "blue",
-    message: "Nachos stand on the concourse has a short line.",
-    likes: 5,
-    comments: 1,
-  },
-  {
-    handle: "@Blue_Linv32",
-    initials: "BL",
-    avatar: "magenta",
-    message: "Atmosphere in Section 114 right now is absolutely unreal.",
-    likes: 21,
-    comments: 3,
-  },
-  {
-    handle: "@Davper_864",
-    initials: "DP",
-    avatar: "red",
-    message: "We have less people at Sir Alex stand",
-    likes: 4,
-    comments: 2,
-  },
-  {
-    handle: "@Sarah_M88",
-    initials: "SM",
-    avatar: "green",
-    message: "Food court by Gate D has the best pretzels. No wait right now.",
-    likes: 11,
-    comments: 2,
-  },
-  {
-    handle: "@Mike_R_92",
-    initials: "MR",
-    avatar: "orange",
-    message: "East parking lot filling fast. West lot still has plenty of space.",
-    likes: 9,
-    comments: 1,
-  },
-  {
-    handle: "@Emma_C_23",
-    initials: "EC",
-    avatar: "magenta",
-    message: "Just scored two seats in 108! View is incredible from here.",
-    likes: 18,
-    comments: 4,
-  },
-  {
-    handle: "@Jake_T_45",
-    initials: "JT",
-    avatar: "sky",
-    message: "Restrooms near Section 120 are clean and no line. Rare win.",
-    likes: 6,
-    comments: 0,
-  },
-];
-
-const simulation = {
-  visiblePostCount: 5,
-  idleMinMs: 1500,
-  idleMaxMs: 2500,
-  typingMinMs: 40,
-  typingMaxMs: 70,
-  typingIndicatorMs: 900,
-  postTransitionMs: 350,
-  flagVisibleMs: 2200,
-  flagEveryPosts: 4,
-  reactionMinMs: 1200,
-  reactionMaxMs: 3000,
-};
-
-function randomBetween(min: number, max: number) {
-  return min + Math.random() * (max - min);
-}
-
-function PhonePost({
-  post,
-  liked,
-  reacting,
-  entering,
-}: {
-  post: FeedPost;
-  liked: boolean;
-  reacting: boolean;
-  entering: boolean;
-}) {
+function PhonePost({ post, reducedMotion }: { post: FeedPost; reducedMotion: boolean }) {
   return (
-    <article
-      className={`${styles.post}${entering ? ` ${styles.entering}` : ""}`}
-      data-post-key={post.key}
+    <motion.article
+      className={styles.post}
+      layout={!reducedMotion}
+      initial={{ opacity: 0, x: reducedMotion ? 0 : -48 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{
+        opacity: 0,
+        x: reducedMotion ? 0 : 24,
+        y: reducedMotion ? 0 : "100%",
+        transition: { duration: 0.4, ease: "easeOut" },
+      }}
+      transition={{
+        duration: reducedMotion ? 0.25 : 0.6,
+        ease: reducedMotion ? "easeOut" : [0.22, 1, 0.36, 1],
+      }}
     >
       <div className={styles.postMeta}>
-        <span className={`${styles.postAvatar} ${styles[`avatar${post.avatar}`]}`}>
-          {post.initials}
-        </span>
-        <span className={styles.postHandle}>{post.handle}</span>
-        <span className={styles.postActions}>
-          <span
-            className={`${styles.commentIcon}${post.comments > 0 ? ` ${styles.commented}` : ""}`}
-          />
-          {post.comments > 0 && (
-            <small className={styles.commentCount}>{post.comments}</small>
-          )}
-          <span className={`${styles.reaction}${reacting ? ` ${styles.reacting}` : ""}`}>
-            <span className={`${styles.heartIcon}${liked ? ` ${styles.liked}` : ""}`} />
+        <div className={styles.postIdentity}>
+          <span className={`${styles.postAvatar} ${styles[`avatar${post.avatar}`]}`}>
+            {post.initials}
           </span>
-          <small>{post.likes}</small>
-          <Image
-            className={styles.flagIcon}
-            src="/icons/bi_flag-fill.svg"
-            alt=""
-            width={12}
-            height={12}
-          />
+          <span className={styles.postHandle}>{post.handle}</span>
+          <span className={styles.postTime}>{post.time}</span>
+        </div>
+        <span className={styles.postActions}>
+          <span className={styles.postAction}>
+            <span className={`${styles.commentIcon} ${post.comments > 0 ? styles.iconTeal : styles.iconGrey}`} />
+            {post.comments > 0 && (
+              <motion.small
+                key={`${post.id}-comments-${post.comments}`}
+                className={styles.countTeal}
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+              >
+                {post.comments}
+              </motion.small>
+            )}
+          </span>
+          <span className={styles.postAction}>
+            <span className={`${styles.upvoteIcon} ${post.upvotes > 0 ? styles.iconOrange : styles.iconGrey}`} />
+            {post.upvotes > 0 && (
+              <motion.small
+                key={`${post.id}-upvotes-${post.upvotes}`}
+                className={styles.countOrange}
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+              >
+                {post.upvotes}
+              </motion.small>
+            )}
+          </span>
+          <span className={styles.postAction}>
+            <span className={`${styles.flagIcon} ${post.flagged ? styles.iconRed : styles.iconGrey}`} />
+            {post.flagged && <small className={styles.countRed}>{post.flagCount}</small>}
+          </span>
         </span>
       </div>
-      <p className={styles.postMessage}>{post.message}</p>
-    </article>
+      <div className={styles.postBody}>
+        <p className={styles.postMessage}>{post.message}</p>
+        <span className={`${styles.chip} ${styles[`chip${post.tag}`]}`}>
+          {post.tag}
+        </span>
+      </div>
+      {post.flagged && (
+        <div className={styles.flagBanner}>
+          <span className={styles.flagBannerInner}>
+            <span className={styles.flagBannerIcon} />
+            This post has been flagged for {post.flagReason}
+          </span>
+        </div>
+      )}
+    </motion.article>
   );
 }
 
 export default function PhoneLiveFeed() {
   const phoneRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const postsRef = useRef(initialPosts);
-  const previousTops = useRef(new Map<string, number>());
-  const frameRef = useRef<number | null>(null);
-  const timers = useRef(new Set<number>());
-  const postIndex = useRef(0);
-  const postSequence = useRef(0);
-  const postCount = useRef(0);
-
+  const reducedMotion = Boolean(useReducedMotion());
   const [isInView, setIsInView] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
-  const [posts, setPosts] = useState(initialPosts);
-  const [likedKeys, setLikedKeys] = useState<Set<string>>(
-    () => new Set(initialPosts.filter((post) => post.likes > 10).map((post) => post.key)),
-  );
-  const [draft, setDraft] = useState("");
-  const [typingHandle, setTypingHandle] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [newPostKey, setNewPostKey] = useState<string | null>(null);
-  const [reactingKey, setReactingKey] = useState<string | null>(null);
-  const [flagVisible, setFlagVisible] = useState(false);
-  const [flagFading, setFlagFading] = useState(false);
-  const [exitingPost, setExitingPost] = useState<FeedPost | null>(null);
-
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-
-    const elements = Array.from(
-      list.querySelectorAll<HTMLElement>("[data-post-key]"),
-    );
-    const moved: HTMLElement[] = [];
-
-    elements.forEach((element) => {
-      const key = element.dataset.postKey;
-      const previousTop = key ? previousTops.current.get(key) : undefined;
-      if (!key || previousTop === undefined) return;
-
-      const delta = previousTop - element.getBoundingClientRect().top;
-      if (Math.abs(delta) < 1) return;
-      element.style.transition = "none";
-      element.style.transform = `translate3d(0, ${delta}px, 0)`;
-      void element.offsetHeight;
-      element.style.transition = "";
-      moved.push(element);
-    });
-
-    if (moved.length) {
-      if (frameRef.current !== null) {
-        window.cancelAnimationFrame(frameRef.current);
-      }
-      frameRef.current = window.requestAnimationFrame(() => {
-        moved.forEach((element) => {
-          element.style.transform = "";
-        });
-      });
-    }
-
-    previousTops.current = new Map(
-      elements.flatMap((element) => {
-        const key = element.dataset.postKey;
-        return key
-          ? [[key, element.getBoundingClientRect().top] as [string, number]]
-          : [];
-      }),
-    );
-  });
+  const posts = useFeedScript(isInView && isDocumentVisible, reducedMotion);
 
   useEffect(() => {
     const phone = phoneRef.current;
@@ -277,11 +110,6 @@ export default function PhoneLiveFeed() {
     const updateVisibility = () => {
       const visible = document.visibilityState === "visible";
       setIsDocumentVisible(visible);
-      if (!visible) {
-        setTypingHandle("");
-        setIsTyping(false);
-        setDraft("");
-      }
     };
 
     updateVisibility();
@@ -290,123 +118,8 @@ export default function PhoneLiveFeed() {
       document.removeEventListener("visibilitychange", updateVisibility);
   }, []);
 
-  useEffect(
-    () => () => {
-      if (frameRef.current !== null) {
-        window.cancelAnimationFrame(frameRef.current);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const timerIds = timers.current;
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (!isInView || !isDocumentVisible || reducedMotion) return;
-
-    let active = true;
-    const later = (callback: () => void, delay: number) => {
-      const timer = window.setTimeout(() => {
-        timerIds.delete(timer);
-        if (active) callback();
-      }, delay);
-      timerIds.add(timer);
-      return timer;
-    };
-
-    const scheduleReaction = () => {
-      later(() => {
-        const currentPosts = postsRef.current;
-        if (!currentPosts.length) return;
-        const target = Math.floor(Math.random() * currentPosts.length);
-        const post = currentPosts[target];
-        const nextPosts = [...currentPosts];
-        nextPosts[target] = { ...post, likes: post.likes + 1 };
-        postsRef.current = nextPosts;
-        setPosts(nextPosts);
-        setLikedKeys((keys) => new Set(keys).add(post.key));
-        setReactingKey(post.key);
-        later(() => setReactingKey(null), 320);
-        scheduleReaction();
-      }, randomBetween(simulation.reactionMinMs, simulation.reactionMaxMs));
-    };
-
-    const schedulePost = () => {
-      later(() => {
-        const post = postScript[postIndex.current % postScript.length];
-        postIndex.current += 1;
-        setTypingHandle(post.handle);
-        setIsTyping(false);
-        setDraft("");
-
-        later(() => {
-          setIsTyping(true);
-          let characterIndex = 0;
-
-          const typeNextCharacter = () => {
-            characterIndex += 1;
-            setDraft(post.message.slice(0, characterIndex));
-
-            if (characterIndex >= post.message.length) {
-              later(() => {
-                const newKey = `script-${postSequence.current++}`;
-                const nextPost = { ...post, key: newKey };
-                const currentPosts = postsRef.current;
-                let nextPosts: FeedPost[];
-                if (currentPosts.length < simulation.visiblePostCount) {
-                  nextPosts = [nextPost, ...currentPosts];
-                } else {
-                  setExitingPost(currentPosts[currentPosts.length - 1]);
-                  later(() => setExitingPost(null), simulation.postTransitionMs);
-                  nextPosts = [nextPost, ...currentPosts.slice(0, -1)];
-                }
-                postsRef.current = nextPosts;
-                setPosts(nextPosts);
-                setTypingHandle("");
-                setIsTyping(false);
-                setDraft("");
-                setNewPostKey(newKey);
-                setLikedKeys((keys) => new Set(keys).add(newKey));
-                later(() => setNewPostKey(null), simulation.postTransitionMs);
-                postCount.current += 1;
-
-                if (postCount.current % simulation.flagEveryPosts === 0) {
-                  setFlagVisible(true);
-                  setFlagFading(false);
-                  later(() => setFlagFading(true), simulation.flagVisibleMs - 300);
-                  later(() => setFlagVisible(false), simulation.flagVisibleMs);
-                }
-                schedulePost();
-              }, 450);
-              return;
-            }
-
-            later(
-              typeNextCharacter,
-              randomBetween(simulation.typingMinMs, simulation.typingMaxMs),
-            );
-          };
-
-          later(typeNextCharacter, randomBetween(simulation.typingMinMs, simulation.typingMaxMs));
-        }, simulation.typingIndicatorMs);
-      }, randomBetween(simulation.idleMinMs, simulation.idleMaxMs));
-    };
-
-    schedulePost();
-    scheduleReaction();
-
-    return () => {
-      active = false;
-      timerIds.forEach((timer) => window.clearTimeout(timer));
-      timerIds.clear();
-    };
-  }, [isDocumentVisible, isInView]);
-
   return (
-    <div className={styles.phone} ref={phoneRef} aria-hidden="true">
+    <div className={styles.phone} ref={phoneRef} aria-hidden="true" inert>
       <Image
         className={styles.frame}
         src="/icons/iphone.svg"
@@ -521,62 +234,27 @@ export default function PhoneLiveFeed() {
           </span>
         </nav>
         <div className={styles.postArea}>
-          <div
-            className={`${styles.typingIndicator}${typingHandle ? ` ${styles.typingVisible}` : ""}`}
-          >
-            {typingHandle && (
-              <>
-                <span>{typingHandle} is typing</span>
-                <i /><i /><i />
-              </>
-            )}
-          </div>
-          <div className={styles.postList} ref={listRef}>
-            {posts.map((post) => (
-              <PhonePost
-                key={post.key}
-                post={post}
-                liked={likedKeys.has(post.key)}
-                reacting={reactingKey === post.key}
-                entering={newPostKey === post.key}
-              />
-            ))}
-            {exitingPost && (
-              <div className={styles.exitingPost}>
+          <div className={styles.postList}>
+            <AnimatePresence mode="popLayout" initial={false}>
+              {posts.map((post) => (
                 <PhonePost
-                  post={exitingPost}
-                  liked={likedKeys.has(exitingPost.key)}
-                  reacting={false}
-                  entering={false}
+                  key={post.id}
+                  post={post}
+                  reducedMotion={reducedMotion}
                 />
-              </div>
-            )}
-            {flagVisible && (
-              <div
-                className={`${styles.flagNotice}${flagFading ? ` ${styles.flagFading}` : ""}`}
-              >
-                <Image
-                  src="/icons/bi_flag-fill.svg"
-                  alt=""
-                  width={12}
-                  height={12}
-                />
-                This post has been flagged for inciting violence
-              </div>
-            )}
+              ))}
+            </AnimatePresence>
           </div>
         </div>
         <div className={styles.composer}>
-          <span className={styles.addButton}>+</span>
-          <span className={`${styles.input}${isTyping ? ` ${styles.inputTyping}` : ""}`}>
-            <span className={styles.inputText}>
-              {isTyping ? draft : "Write message"}
+          <div className={styles.composerRow}>
+            <span className={styles.addButton}>+</span>
+            <span className={styles.input}>Write message</span>
+            <span className={styles.sendButton}>
+              <Image src="/icons/Group 17.svg" alt="" width={20} height={20} />
             </span>
-            {isTyping && <i className={styles.caret} />}
-          </span>
-          <span className={styles.sendButton}>
-            <Image src="/icons/Group 17.svg" alt="" width={20} height={20} />
-          </span>
+          </div>
+          <small className={styles.counter}>0 / 140</small>
         </div>
         <nav className={styles.bottomNav} aria-label="App navigation">
           <span>

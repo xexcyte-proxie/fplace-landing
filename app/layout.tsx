@@ -11,7 +11,7 @@ const inter = Inter({
 const kanit = Kanit({
   variable: "--font-kanit",
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500"],
+  weight: ["200", "300", "400", "500", "700"],
   style: ["normal", "italic"],
 });
 
@@ -33,7 +33,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.variable} ${kanit.variable} ${krub.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head />
+      <body className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }
