@@ -9,15 +9,28 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigationLinks = getNavigationLinks(page);
   const partnerHref =
-    page === "venues" ? "#contact" : page === "faq" ? "/venues#contact" : "#venues";
+    page === "venues"
+      ? "#contact"
+      : page === "faq" || page === "features"
+        ? "/venues#contact"
+        : "#venues";
   const actionHref =
-    page === "venues" ? "#steps" : page === "faq" ? "/#our-approach" : "#how-it-works";
+    page === "venues"
+      ? "#steps"
+      : page === "faq" || page === "features"
+        ? "/#our-approach"
+        : "#how-it-works";
   const isVenuePage = page === "venues";
   const isFaqPage = page === "faq";
+  const isFeaturesPage = page === "features";
   const brandImage =
-    isVenuePage || isFaqPage ? "/img/fplaces%202.png" : "/img/fplace.png";
+    isVenuePage || isFaqPage || isFeaturesPage
+      ? "/img/fplaces%202.png"
+      : "/img/fplace.png";
   const navbarClass =
-    isVenuePage || isFaqPage ? " vn-navbar" : "";
+    isVenuePage || isFaqPage || isFeaturesPage
+      ? ` vn-navbar${isFeaturesPage ? " fe-navbar" : ""}`
+      : "";
 
   return (
     <header className={`site-header${navbarClass}`}>
@@ -38,7 +51,8 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
             href={link.href}
             aria-current={
               (isVenuePage && link.label === "For venues") ||
-              (isFaqPage && link.label === "FAQ")
+              (isFaqPage && link.label === "FAQ") ||
+              (isFeaturesPage && link.label === "Features")
                 ? "page"
                 : undefined
             }
@@ -82,7 +96,8 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
             href={link.href}
             aria-current={
               (isVenuePage && link.label === "For venues") ||
-              (isFaqPage && link.label === "FAQ")
+              (isFaqPage && link.label === "FAQ") ||
+              (isFeaturesPage && link.label === "Features")
                 ? "page"
                 : undefined
             }
