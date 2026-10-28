@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Kanit, Krub } from "next/font/google";
+import { Suspense } from "react";
+import AnalyticsEvents from "../components/AnalyticsEvents";
+import ConsentBanner from "../components/ConsentBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -36,6 +39,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head />
       <body className="min-h-full flex flex-col">
         {children}
+        <Suspense fallback={null}>
+          <ConsentBanner />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AnalyticsEvents />
+        </Suspense>
       </body>
     </html>
   );

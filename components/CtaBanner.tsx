@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { trackEvent } from "../lib/analytics";
 
 export default function CtaBanner() {
   return (
@@ -25,6 +28,12 @@ export default function CtaBanner() {
             className="secondary-button cta-button reveal-item"
             data-reveal-item
             href="#get-started"
+            onClick={() =>
+              trackEvent("cta_click", {
+                label: "Get started",
+                page: window.location.pathname,
+              })
+            }
           >
             Get started
           </a>

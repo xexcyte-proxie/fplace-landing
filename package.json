@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@microsoft/clarity": "^1.0.2",
+    "@types/mixpanel-browser": "^2.60.0",
+    "mixpanel-browser": "^2.84.0",
     "motion": "^14.4.0",
     "next": "16.4.3",
     "nodemailer": "^10.1.7",

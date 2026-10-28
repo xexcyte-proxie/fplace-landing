@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import CtaBanner from "../../components/CtaBanner";
 import SiteFooter from "../../components/SiteFooter";
 import SiteNavbar from "../../components/SiteNavbar";
+import { trackEvent } from "../../lib/analytics";
 import { validateContact, type ContactField, type FieldErrors } from "../../lib/validation";
 
 type VenueType = {
@@ -148,6 +149,7 @@ type ErrorResponse = {
 };
 
 function ContactForm() {
+  const hasStarted = useRef(false);
   const [values, setValues] = useState(emptyForm);
   const [honeypot, setHoneypot] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -177,6 +179,10 @@ function ContactForm() {
       setErrors(validation.errors);
       setFeedback("Please check the highlighted fields.");
       setFeedbackType("error");
+      trackEvent("form_error", {
+        form_name: "contact",
+        error_type: "validation",
+      });
       return;
     }
 
@@ -199,6 +205,10 @@ function ContactForm() {
           data?.error ?? "Something went wrong, please try again or email us directly",
         );
         setFeedbackType("error");
+        trackEvent("form_error", {
+          form_name: "contact",
+          error_type: "server",
+        });
         return;
       }
 
@@ -206,21 +216,44 @@ function ContactForm() {
       setHoneypot("");
       setFeedback("Thanks, we'll be in touch");
       setFeedbackType("success");
+      trackEvent(
+        "contact_form_submitted",
+        values.venueType ? { venue_type: values.venueType } : undefined,
+      );
     } catch {
       setFeedback("Something went wrong, please try again or email us directly");
       setFeedbackType("error");
+      trackEvent("form_error", {
+        form_name: "contact",
+        error_type: "network",
+      });
     } finally {
       setIsSending(false);
     }
   };
 
   return (
-    <form className="vn-form" onSubmit={handleSubmit}>
+    <form
+      className="vn-form"
+      onSubmit={handleSubmit}
+      onInvalidCapture={() =>
+        trackEvent("form_error", {
+          form_name: "contact",
+          error_type: "validation",
+        })
+      }
+      onFocusCapture={() => {
+        if (hasStarted.current) return;
+        hasStarted.current = true;
+        trackEvent("form_started", { form_name: "contact" });
+      }}
+    >
       <div className="vn-fields">
         <div className="vn-field">
           <label htmlFor="vn-name">Full name</label>
           <input
             id="vn-name"
+            data-clarity-mask="True"
             name="name"
             type="text"
             placeholder="Paul Doe"
@@ -242,6 +275,7 @@ function ContactForm() {
           <label htmlFor="vn-email">Work email</label>
           <input
             id="vn-email"
+            data-clarity-mask="True"
             name="email"
             type="email"
             placeholder="paul@cheerstadium.com"
@@ -263,6 +297,7 @@ function ContactForm() {
           <label htmlFor="vn-venue-name">Venue name</label>
           <input
             id="vn-venue-name"
+            data-clarity-mask="True"
             name="venueName"
             type="text"
             placeholder="Rivers Stadium"
@@ -284,6 +319,7 @@ function ContactForm() {
           <div className="vn-select-wrap">
             <select
               id="vn-venue-type"
+              data-clarity-mask="True"
               name="venueType"
               value={values.venueType}
               onChange={(event) => updateValue("venueType", event.target.value)}
@@ -315,6 +351,7 @@ function ContactForm() {
         <label htmlFor="vn-message">Message</label>
         <textarea
           id="vn-message"
+          data-clarity-mask="True"
           name="message"
           placeholder="Tell us a little about your venue"
           value={values.message}
@@ -359,65 +396,6 @@ function ContactForm() {
 }
 
 export default function VenuesPage() {
-  useEffect(() => {
-    if (
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-      typeof IntersectionObserver === "undefined"
-    ) {
-      return;
-    }
-
-    const items = document.querySelectorAll<HTMLElement>(".vn-reveal");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("vn-is-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -24px 0px" },
-    );
-
-    document.documentElement.classList.add("vn-motion-ready");
-    items.forEach((item) => observer.observe(item));
-
-    return () => {
-      observer.disconnect();
-      document.documentElement.classList.remove("vn-motion-ready");
-    };
-  }, []);
-
-  useEffect(() => {
-    const revealItems = document.querySelectorAll<HTMLElement>(
-      "[data-reveal-item]",
-    );
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      revealItems.forEach((item) => item.classList.add("is-visible"));
-      return;
-    }
-
-    document.documentElement.classList.add("has-scroll-reveal");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -24px 0px" },
-    );
-    revealItems.forEach((item) => observer.observe(item));
-
-    return () => {
-      observer.disconnect();
-      document.documentElement.classList.remove("has-scroll-reveal");
-    };
-  }, []);
-
   return (
     <main className="vn-page">
       <div className="vn-nav-band">
@@ -436,7 +414,16 @@ export default function VenuesPage() {
               venue you already run — no rebuild, no new hardware, no app for
               visitors to download
             </p>
-            <a className="vn-primary-button" href="#contact">
+            <a
+              className="vn-primary-button"
+              href="#contact"
+              onClick={() =>
+                trackEvent("cta_click", {
+                  label: "Get in touch",
+                  page: "/venues",
+                })
+              }
+            >
               Get in touch
             </a>
           </div>
@@ -469,11 +456,10 @@ export default function VenuesPage() {
             something, fplaces fits.
           </p>
           <div className="vn-type-grid">
-            {venueTypes.map((venue, index) => (
+            {venueTypes.map((venue) => (
               <article
                 className="vn-type-card vn-reveal"
                 key={venue.title}
-                style={{ transitionDelay: `${index * 55}ms` }}
               >
                 <div className="vn-type-photo">
                   <Image

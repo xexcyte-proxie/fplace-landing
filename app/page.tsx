@@ -6,6 +6,7 @@ import CtaBanner from "../components/CtaBanner";
 import PhoneLiveFeed from "../components/PhoneLiveFeed";
 import SiteFooter from "../components/SiteFooter";
 import SiteNavbar from "../components/SiteNavbar";
+import { trackEvent } from "../lib/analytics";
 
 const venueCategories = [
   {
@@ -249,7 +250,7 @@ export default function Home() {
         <div className="hero-content">
           <div className="hero-copy">
             <p className="eyebrow">Navigate. Discover. Share.</p>
-            <h1 id="hero-title">
+            <h1 className="reveal-item" id="hero-title" data-reveal-item>
               <span>
                 <strong>Find</strong> <em>places.</em>
               </span>
@@ -266,7 +267,13 @@ export default function Home() {
               Right from your browser.
             </p>
             <div className="hero-actions">
-              <a className="primary-button" href="#get-started">
+              <a
+                className="primary-button"
+                href="#get-started"
+                onClick={() =>
+                  trackEvent("cta_click", { label: "Get started", page: "/" })
+                }
+              >
                 Get started
                 <Image
                   src="/icons/arrow-up-right.svg"
@@ -297,7 +304,8 @@ export default function Home() {
                   fill
                   priority
                   sizes="(max-width: 760px) 100vw, 50vw"
-                  className="navigation-image"
+                  className="navigation-image reveal-image reveal-item"
+                  data-reveal-item
                 />
               </div>
             </div>
@@ -315,12 +323,13 @@ export default function Home() {
 
       <section className="community-section" aria-label="Explore venues together">
         <Image
-          className="community-image"
+          className="community-image reveal-image reveal-item"
           src="/img/body.png"
           alt="Friends following Fplaces indoor navigation together at a stadium"
           width={1593}
           height={968}
           sizes="(max-width: 760px) 100vw, 80vw"
+          data-reveal-item
         />
       </section>
 
@@ -332,11 +341,12 @@ export default function Home() {
       >
         <div className="venue-section-inner venue-layout">
           <div className="venue-grid" aria-label="Types of venues">
-            {venueCategories.map((category) => (
+            {venueCategories.map((category, index) => (
               <article
                 className="venue-card reveal-item"
                 data-reveal-item
                 key={category.title}
+                style={{ transitionDelay: `${index * 80}ms` }}
               >
 <span className="venue-icon-tile" aria-hidden="true">
                     <span
@@ -555,32 +565,38 @@ export default function Home() {
           <div className="fv-collage" aria-label="Venues in action">
             <figure className="fv-photo fv-photo-stadium fv-reveal">
               <Image
-                className="fv-photo-image"
+                className="fv-photo-image reveal-image"
                 src="/img/Frame 208.png"
                 alt="Stadium seating and pitch"
                 width={610}
                 height={900}
                 sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1024px) 45vw, 265px"
+                data-reveal-item
+                data-reveal-image
               />
             </figure>
             <figure className="fv-photo fv-photo-concourse fv-reveal">
               <Image
-                className="fv-photo-image"
+                className="fv-photo-image reveal-image"
                 src="/img/Frame 209.png"
                 alt="Crowd walking through a stadium concourse"
                 width={458}
                 height={324}
                 sizes="(max-width: 767px) calc(50vw - 22px), (max-width: 1024px) 45vw, 265px"
+                data-reveal-item
+                data-reveal-image
               />
             </figure>
             <figure className="fv-photo fv-photo-transport fv-reveal">
               <Image
-                className="fv-photo-image"
+                className="fv-photo-image reveal-image"
                 src="/img/Frame 254.png"
                 alt="Passengers in a busy transport hub"
                 width={458}
                 height={320}
                 sizes="(max-width: 767px) calc(50vw - 22px), (max-width: 1024px) 45vw, 265px"
+                data-reveal-item
+                data-reveal-image
               />
             </figure>
           </div>
@@ -656,7 +672,16 @@ export default function Home() {
                 </span>
               </li>
             </ul>
-            <a className="fv-cta fv-reveal" href="/venues#contact">
+            <a
+              className="fv-cta fv-reveal"
+              href="/venues#contact"
+              onClick={() =>
+                trackEvent("cta_click", {
+                  label: "Talk to our team",
+                  page: "/",
+                })
+              }
+            >
               Talk to our team
             </a>
           </div>

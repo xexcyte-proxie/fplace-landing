@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import SiteFooter from "../../components/SiteFooter";
 import SiteNavbar from "../../components/SiteNavbar";
+import { trackEvent } from "../../lib/analytics";
 
 const faqs = [
   {
@@ -95,7 +96,7 @@ export default function FaqPage() {
       {/* One-answer-at-a-time accessible FAQ accordion. */}
       <section className="faq-list-section" aria-label="Frequently asked questions">
         <div className="faq-list">
-          {faqs.map((faq) => {
+          {faqs.map((faq, index) => {
             const isOpen = openFaqId === faq.id;
             const questionId = `faq-question-${faq.id}`;
             const answerId = `faq-answer-${faq.id}`;
@@ -112,7 +113,14 @@ export default function FaqPage() {
                     type="button"
                     aria-expanded={isOpen}
                     aria-controls={answerId}
-                    onClick={() => setOpenFaqId(isOpen ? null : faq.id)}
+                    onClick={() => {
+                      if (!isOpen) {
+                        trackEvent("faq_opened", {
+                          question_number: index + 1,
+                        });
+                      }
+                      setOpenFaqId(isOpen ? null : faq.id);
+                    }}
                   >
                     <span>{faq.question}</span>
                     <Image

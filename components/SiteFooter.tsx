@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { getFooterLinks, type SitePage } from "./siteNavigation";
 import { isValidEmail } from "../lib/validation";
+import { trackEvent } from "../lib/analytics";
 
 const socialLinks = [
   {
@@ -52,6 +53,17 @@ function FooterLinkList({ page }: { page: SitePage }) {
             <a href={link.href}>{link.label}</a>
           </li>
         ))}
+        <li>
+          <a
+            href="#cookie-settings"
+            onClick={(event) => {
+              event.preventDefault();
+              window.dispatchEvent(new Event("fplaces:open-consent"));
+            }}
+          >
+            Cookie settings
+          </a>
+        </li>
       </ul>
     </nav>
   );
@@ -82,6 +94,7 @@ type ErrorResponse = {
 };
 
 function NewsletterForm() {
+  const hasStarted = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [feedbackType, setFeedbackType] = useState<"success" | "error" | "">("");
@@ -91,6 +104,10 @@ function NewsletterForm() {
     setEmailError(message);
     setFeedback(message);
     setFeedbackType("error");
+    trackEvent("form_error", {
+      form_name: "newsletter",
+      error_type: "validation",
+    });
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -126,15 +143,24 @@ function NewsletterForm() {
           data?.error ?? "Something went wrong, please try again or email us directly",
         );
         setFeedbackType("error");
+        trackEvent("form_error", {
+          form_name: "newsletter",
+          error_type: "server",
+        });
         return;
       }
 
       form.reset();
       setFeedback("Thanks, you're subscribed.");
       setFeedbackType("success");
+      trackEvent("newsletter_subscribed");
     } catch {
       setFeedback("Something went wrong, please try again or email us directly");
       setFeedbackType("error");
+      trackEvent("form_error", {
+        form_name: "newsletter",
+        error_type: "network",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -145,6 +171,11 @@ function NewsletterForm() {
       className="ft-newsletter-form"
       id="get-started"
       onSubmit={handleSubmit}
+      onFocusCapture={() => {
+        if (hasStarted.current) return;
+        hasStarted.current = true;
+        trackEvent("form_started", { form_name: "newsletter" });
+      }}
     >
       <label className="ft-email-label" htmlFor="ft-email">
         Email address
@@ -155,6 +186,7 @@ function NewsletterForm() {
           id="ft-email"
           name="email"
           type="email"
+          data-clarity-mask="True"
           placeholder="Enter email address"
           autoComplete="email"
           aria-invalid={emailError ? true : undefined}

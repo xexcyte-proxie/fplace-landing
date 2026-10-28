@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { trackEvent } from "../lib/analytics";
 import Link from "next/link";
 import { useState } from "react";
 import { getNavigationLinks, type SitePage } from "./siteNavigation";
@@ -63,10 +64,28 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
       </nav>
 
       <div className="header-actions">
-        <a className="header-button header-button-light" href={partnerHref}>
+        <a
+          className="header-button header-button-light"
+          href={partnerHref}
+          onClick={() =>
+            trackEvent("cta_click", {
+              label: "Partner with us",
+              page: window.location.pathname,
+            })
+          }
+        >
           Partner with us
         </a>
-        <a className="header-button header-button-dark" href={actionHref}>
+        <a
+          className="header-button header-button-dark"
+          href={actionHref}
+          onClick={() =>
+            trackEvent("cta_click", {
+              label: "See it in action",
+              page: window.location.pathname,
+            })
+          }
+        >
           See it in action
         </a>
         <button
