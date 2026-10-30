@@ -6437,3 +6437,40 @@ button,
     will-change: transform, opacity;
   }
 }
+
+/* MOBILE MENU FIX */
+@media (max-width: 768px) {
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  .site-header > .brand,
+  .site-header > .header-actions {
+    position: relative;
+    z-index: 1000;
+  }
+
+  .mobile-navigation.is-open {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    box-sizing: border-box;
+    padding-top: 82px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    z-index: 999;
+    background: linear-gradient(105deg, #d66d2e 0%, #cc642b 52%, #d56b2d 100%);
+  }
+
+  body:has(.mobile-navigation.is-open) {
+    overflow: hidden;
+  }
+}
