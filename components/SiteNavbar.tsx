@@ -41,7 +41,7 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
           alt="Fplaces"
           width={196}
           height={50}
-          priority
+          sizes="(max-width: 820px) 102px, 130px"
         />
       </Link>
 

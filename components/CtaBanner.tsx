@@ -9,7 +9,7 @@ export default function CtaBanner() {
       <div className="cta-banner">
         <Image
           className="cta-background"
-          src="/img/Frame 270.png"
+          src="/img/Frame 270.webp"
           alt=""
           fill
           sizes="(max-width: 767px) calc(100vw - 32px), 1282px"

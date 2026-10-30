@@ -20,7 +20,7 @@ const venueTypes: VenueType[] = [
     title: "Stadiums",
     description:
       "Help fans find their seat, favorite food stand, or friends in a space of thousands",
-    image: "stadium.png",
+    image: "stadium.webp",
     alt: "Fans in a stadium",
   },
   {
@@ -34,21 +34,21 @@ const venueTypes: VenueType[] = [
     title: "Train stations",
     description:
       "Get commuters and tourists to the right platform on time, even in a station they don't know",
-    image: "train station.png",
+    image: "train station.webp",
     alt: "Passengers at a train station",
   },
   {
     title: "Shopping malls",
     description:
       "No more wandering floor to floor. Shoppers find the store they want fast, even at the busiest times",
-    image: "Shopping mall 2.png",
+    image: "Shopping mall 2.webp",
     alt: "Visitors in a shopping mall",
   },
   {
     title: "Universities & campuses",
     description:
       "Help students, staff, and visitors find the right building or lecture hall across a large campus",
-    image: "universities and campus.png",
+    image: "universities and campus.webp",
     alt: "Students walking across a university campus",
   },
   {
@@ -62,14 +62,14 @@ const venueTypes: VenueType[] = [
     title: "Concert",
     description:
       "Get ticket holders to their exact seat and section, without the usual scramble before it starts",
-    image: "concerts.png",
+    image: "concerts.webp",
     alt: "Crowd at a live concert",
   },
   {
     title: "Convention centers",
     description:
       "Guide attendees straight to a specific booth or hall instead of wandering a massive show floor",
-    image: "convention centres.png",
+    image: "convention centres.webp",
     alt: "Exhibition floor at a convention center",
   },
 ];
@@ -429,12 +429,13 @@ export default function VenuesPage() {
           </div>
           <div className="vn-hero-photo vn-reveal">
             <Image
-              src="/img/Venue.png"
+              src="/img/Venue.webp"
               alt="Venue manager using a tablet in a stadium"
               width={1200}
               height={800}
               priority
-              sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1024px) 48vw, 560px"
+              fetchPriority="high"
+              sizes="(max-width: 767px) calc(100vw - 48px), (max-width: 1024px) 48vw, 560px"
             />
           </div>
         </div>

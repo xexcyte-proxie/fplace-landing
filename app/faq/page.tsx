@@ -76,10 +76,11 @@ export default function FaqPage() {
       <section className="faq-hero" aria-labelledby="faq-hero-title">
         <Image
           className="faq-hero-image"
-          src="/img/faq-hero.png"
+          src="/img/faq-hero.webp"
           alt=""
           fill
           priority
+          fetchPriority="high"
           sizes="100vw"
           aria-hidden="true"
         />

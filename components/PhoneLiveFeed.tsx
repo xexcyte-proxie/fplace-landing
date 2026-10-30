@@ -127,7 +127,6 @@ export default function PhoneLiveFeed() {
         fill
         sizes="(max-width: 767px) 280px, 250px"
         unoptimized
-        priority
       />
       <div className={styles.screen}>
         <div className={styles.content}>
@@ -196,7 +195,6 @@ export default function PhoneLiveFeed() {
               width={64}
               height={23}
               unoptimized
-              priority
             />
           </span>
           <span className={styles.categoryTab}>
@@ -206,7 +204,6 @@ export default function PhoneLiveFeed() {
               width={36}
               height={24}
               unoptimized
-              priority
             />
           </span>
           <span className={styles.categoryTab}>
@@ -216,7 +213,6 @@ export default function PhoneLiveFeed() {
               width={36}
               height={24}
               unoptimized
-              priority
             />
           </span>
           <span className={styles.lineTab}>
@@ -226,7 +222,6 @@ export default function PhoneLiveFeed() {
               width={36}
               height={24}
               unoptimized
-              priority
             />
           </span>
           <span className={styles.filter}>

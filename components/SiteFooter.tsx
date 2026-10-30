@@ -80,6 +80,7 @@ function SocialLinks() {
               alt=""
               width={link.width}
               height={link.height}
+              sizes={`${link.width}px`}
             />
           </a>
         </li>
@@ -247,6 +248,7 @@ export default function SiteFooter({ page }: { page: SitePage }) {
                 alt="Fplaces"
                 width={196}
                 height={50}
+                sizes="140px"
               />
             </Link>
             <p className="ft-tagline">{footerCopy.tagline}</p>

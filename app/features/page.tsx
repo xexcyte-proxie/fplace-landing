@@ -83,11 +83,12 @@ export default function FeaturesPage() {
           <div className="fe-hero-media">
             <Image
               className="reveal-image reveal-item"
-              src="/img/features.png"
+              src="/img/features.webp"
               alt="A traveler following AR directions on a phone in a busy airport concourse"
               width={1096}
               height={710}
               priority
+              fetchPriority="high"
               sizes="(max-width: 1023px) calc(100vw - 48px), 546px"
               data-reveal-item
             />

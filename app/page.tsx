@@ -299,11 +299,12 @@ export default function Home() {
               <span className="hero-glow" aria-hidden="true" />
               <div className="visual-frame">
                 <Image
-                  src="/img/navigation.png"
+                  src="/img/navigation.webp"
                   alt="Fplaces indoor navigation guiding visitors through an airport"
                   fill
                   priority
-                  sizes="(max-width: 760px) 100vw, 50vw"
+                  sizes="(max-width: 820px) calc(100vw - clamp(48px, 10.84vw, 88px)), (max-width: 1180px) 650px, (max-width: 1800px) 50vw, 900px"
+                  fetchPriority="high"
                   className="navigation-image reveal-image reveal-item"
                   data-reveal-item
                 />
@@ -324,7 +325,7 @@ export default function Home() {
       <section className="community-section" aria-label="Explore venues together">
         <Image
           className="community-image reveal-image reveal-item"
-          src="/img/body.png"
+          src="/img/body.webp"
           alt="Friends following Fplaces indoor navigation together at a stadium"
           width={1593}
           height={968}
@@ -566,7 +567,7 @@ export default function Home() {
             <figure className="fv-photo fv-photo-stadium fv-reveal">
               <Image
                 className="fv-photo-image reveal-image"
-                src="/img/Frame 208.png"
+                src="/img/Frame 208.webp"
                 alt="Stadium seating and pitch"
                 width={610}
                 height={900}
@@ -578,7 +579,7 @@ export default function Home() {
             <figure className="fv-photo fv-photo-concourse fv-reveal">
               <Image
                 className="fv-photo-image reveal-image"
-                src="/img/Frame 209.png"
+                src="/img/Frame 209.webp"
                 alt="Crowd walking through a stadium concourse"
                 width={458}
                 height={324}
@@ -590,7 +591,7 @@ export default function Home() {
             <figure className="fv-photo fv-photo-transport fv-reveal">
               <Image
                 className="fv-photo-image reveal-image"
-                src="/img/Frame 254.png"
+                src="/img/Frame 254.webp"
                 alt="Passengers in a busy transport hub"
                 width={458}
                 height={320}

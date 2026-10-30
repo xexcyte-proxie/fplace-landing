@@ -1,6 +1,3 @@
-import Clarity from "@microsoft/clarity";
-import mixpanel from "mixpanel-browser";
-
 export type ConsentChoice = "granted" | "denied";
 
 type AnalyticsProps = {
@@ -17,6 +14,9 @@ type AnalyticsProps = {
 };
 
 let analyticsInitialized = false;
+let analyticsInitialization: Promise<void> | null = null;
+let claritySdk: (typeof import("@microsoft/clarity"))["default"] | undefined;
+let mixpanelSdk: (typeof import("mixpanel-browser"))["default"] | undefined;
 
 export function getConsent(): ConsentChoice | null {
   if (typeof window === "undefined") return null;
@@ -41,8 +41,8 @@ export function setConsent(choice: ConsentChoice): void {
   window.dispatchEvent(new Event("fplaces:consent-change"));
 
   if (analyticsInitialized && choice === "denied") {
-    if (process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID) Clarity.consent(false);
-    if (process.env.NEXT_PUBLIC_MIXPANEL_TOKEN) mixpanel.opt_out_tracking();
+    if (process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID) claritySdk?.consent(false);
+    if (process.env.NEXT_PUBLIC_MIXPANEL_TOKEN) mixpanelSdk?.opt_out_tracking();
   }
 }
 
@@ -53,30 +53,52 @@ export function initAnalytics(): void {
   const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN;
 
   if (analyticsInitialized) {
-    if (clarityProjectId) Clarity.consent(true);
-    if (mixpanelToken) mixpanel.opt_in_tracking();
+    if (clarityProjectId) claritySdk?.consent(true);
+    if (mixpanelToken) mixpanelSdk?.opt_in_tracking();
     return;
   }
 
-  if (clarityProjectId) {
-    Clarity.init(clarityProjectId);
-    Clarity.consent();
-  }
+  if (analyticsInitialization) return;
 
-  if (mixpanelToken) {
-    mixpanel.init(mixpanelToken, {
-      persistence: "localStorage",
-      ip: true,
-      autocapture: true,
-      track_pageview: "full-url",
-      api_host:
-        process.env.NEXT_PUBLIC_MIXPANEL_REGION === "eu"
-          ? "https://api-eu.mixpanel.com"
-          : undefined,
+  analyticsInitialization = Promise.all([
+    clarityProjectId
+      ? import("@microsoft/clarity")
+      : Promise.resolve(null),
+    mixpanelToken ? import("mixpanel-browser") : Promise.resolve(null),
+  ])
+    .then(([clarityModule, mixpanelModule]) => {
+      claritySdk = clarityModule?.default;
+      mixpanelSdk = mixpanelModule?.default;
+
+      if (getConsent() !== "granted") {
+        analyticsInitialization = null;
+        return;
+      }
+
+      if (clarityProjectId && claritySdk) {
+        claritySdk.init(clarityProjectId);
+        claritySdk.consent();
+      }
+
+      if (mixpanelToken && mixpanelSdk) {
+        mixpanelSdk.init(mixpanelToken, {
+          persistence: "localStorage",
+          ip: true,
+          autocapture: true,
+          track_pageview: "full-url",
+          api_host:
+            process.env.NEXT_PUBLIC_MIXPANEL_REGION === "eu"
+              ? "https://api-eu.mixpanel.com"
+              : undefined,
+        });
+      }
+
+      analyticsInitialized = true;
+    })
+    .catch((error: unknown) => {
+      analyticsInitialization = null;
+      console.error("Failed to initialize analytics after consent.", error);
     });
-  }
-
-  analyticsInitialized = true;
 }
 
 export function trackEvent(name: string, props?: AnalyticsProps): void {
@@ -84,5 +106,15 @@ export function trackEvent(name: string, props?: AnalyticsProps): void {
     return;
   }
 
-  mixpanel.track(name, props);
+  if (mixpanelSdk && analyticsInitialized) {
+    mixpanelSdk.track(name, props);
+    return;
+  }
+
+  initAnalytics();
+  void analyticsInitialization?.then(() => {
+    if (getConsent() === "granted" && analyticsInitialized) {
+      mixpanelSdk?.track(name, props);
+    }
+  });
 }
