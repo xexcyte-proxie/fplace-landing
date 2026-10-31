@@ -282,7 +282,7 @@ export default function Home() {
                   height={16}
                 />
               </a>
-              <a className="secondary-button" href="#how-it-works">
+              <a className="secondary-button" href="#our-approach">
                 How it works
                 <Image
                   src="/icons/arrow-down.svg"

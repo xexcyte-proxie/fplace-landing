@@ -20,7 +20,7 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
       ? "#steps"
       : page === "faq" || page === "features"
         ? "/#our-approach"
-        : "#how-it-works";
+        : "#our-approach";
   const isVenuePage = page === "venues";
   const isFaqPage = page === "faq";
   const isFeaturesPage = page === "features";
