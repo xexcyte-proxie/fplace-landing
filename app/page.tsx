@@ -145,7 +145,10 @@ export default function Home() {
       "[data-reveal-item]",
     );
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      typeof IntersectionObserver === "undefined"
+    ) {
       revealItems.forEach((item) => item.classList.add("is-visible"));
       return;
     }
@@ -231,6 +234,11 @@ export default function Home() {
       return;
     }
 
+    if (typeof IntersectionObserver === "undefined") {
+      feedWindow.classList.add("is-in-view");
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         feedWindow.classList.toggle("is-in-view", entry.isIntersecting);
@@ -300,7 +308,7 @@ export default function Home() {
               <div className="visual-frame">
                 <Image
                   src="/img/navigation.webp"
-                  alt="Fplaces indoor navigation guiding visitors through an airport"
+                  alt="fplaces indoor navigation guiding visitors through an airport"
                   fill
                   priority
                   sizes="(max-width: 820px) calc(100vw - clamp(48px, 10.84vw, 88px)), (max-width: 1180px) 650px, (max-width: 1800px) 50vw, 900px"
@@ -326,7 +334,7 @@ export default function Home() {
         <Image
           className="community-image reveal-image reveal-item"
           src="/img/body.webp"
-          alt="Friends following Fplaces indoor navigation together at a stadium"
+          alt="Friends following fplaces indoor navigation together at a stadium"
           width={1593}
           height={968}
           sizes="(max-width: 760px) 100vw, 80vw"
@@ -373,7 +381,7 @@ export default function Home() {
               helps you find your way faster and stay connected to what&apos;s
               happening around you.
             </p>
-            <a className="explore-venues-button" href="#venue-challenges">
+            <a className="explore-venues-button" href="/venues">
               Explore more venues
               <span className="venue-link-arrow" aria-hidden="true" />
             </a>

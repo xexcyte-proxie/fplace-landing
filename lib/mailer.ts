@@ -1,5 +1,5 @@
 /**
- * Server-only mailer for the Fplaces website.
+ * Server-only mailer for the fplaces website.
  *
  * This module reads SMTP credentials from server-side environment variables
  * and must never be imported from a client component. The values live in
@@ -8,7 +8,7 @@
 
 import nodemailer, { type Transporter } from "nodemailer";
 
-const FROM_DISPLAY_NAME = "Fplaces Website";
+const FROM_DISPLAY_NAME = "fplaces Website";
 
 const REQUIRED_ENV_VARS = [
   "ZOHO_SMTP_HOST",

@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const subject = `New subscriber: ${email}`;
 
   const text = [
-    "New subscriber from the Fplaces website.",
+    "New subscriber from the fplaces website.",
     "",
     `Email: ${email}`,
   ].join("\n");

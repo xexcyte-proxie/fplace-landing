@@ -25,9 +25,9 @@ const krub = Krub({
 });
 
 export const metadata: Metadata = {
-  title: "Fplaces — Find places, find people, find your way",
+  title: "fplaces — Find places, find people, find your way",
   description:
-    "Navigate, discover, and share your way through any venue with Fplaces.",
+    "Navigate, discover, and share your way through any venue with fplaces.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

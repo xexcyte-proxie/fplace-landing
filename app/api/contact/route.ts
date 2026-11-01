@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const subject = `New venue enquiry: ${singleLine(name)}`;
 
   const text = [
-    "New venue enquiry from the Fplaces website.",
+    "New venue enquiry from the fplaces website.",
     "",
     `Name: ${name}`,
     `Email: ${email}`,

@@ -35,10 +35,10 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
 
   return (
     <header className={`site-header${navbarClass}`}>
-      <Link className="brand" href="/" aria-label="Fplaces home">
+      <Link className="brand" href="/" aria-label="fplaces home">
         <Image
           src={brandImage}
-          alt="Fplaces"
+          alt="fplaces"
           width={196}
           height={50}
           sizes="(max-width: 820px) 102px, 130px"

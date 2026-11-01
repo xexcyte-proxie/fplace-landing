@@ -33,7 +33,7 @@ const socialLinks = [
 
 const footerCopy = {
   tagline: "Find places. Find people. Find your way",
-  copyright: "2026, Fplaces All rights reserved",
+  copyright: "2026, fplaces. All rights reserved",
   newsletter: "Don't miss our future updates! Get Subscribed Today!",
 };
 
@@ -241,11 +241,11 @@ export default function SiteFooter({ page }: { page: SitePage }) {
       <div className="ft-container">
         <div className="ft-columns">
           <div className="ft-column ft-brand-column reveal-item" data-reveal-item>
-            <Link className="ft-brand" href="/" aria-label="Fplaces home">
+            <Link className="ft-brand" href="/" aria-label="fplaces home">
               <Image
                 className={page === "home" ? undefined : "ft-brand-new-logo"}
                 src={page === "home" ? "/img/fplace.png" : "/img/fplaces%202.png"}
-                alt="Fplaces"
+                alt="fplaces"
                 width={196}
                 height={50}
                 sizes="140px"

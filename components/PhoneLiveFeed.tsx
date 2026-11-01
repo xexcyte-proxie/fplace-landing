@@ -90,13 +90,15 @@ function PhonePost({ post, reducedMotion }: { post: FeedPost; reducedMotion: boo
 export default function PhoneLiveFeed() {
   const phoneRef = useRef<HTMLDivElement>(null);
   const reducedMotion = Boolean(useReducedMotion());
-  const [isInView, setIsInView] = useState(false);
+  const [isInView, setIsInView] = useState(true);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
   const posts = useFeedScript(isInView && isDocumentVisible, reducedMotion);
 
   useEffect(() => {
     const phone = phoneRef.current;
     if (!phone) return;
+
+    if (typeof IntersectionObserver === "undefined") return;
 
     const observer = new IntersectionObserver(
       ([entry]) => setIsInView(entry.isIntersecting),
@@ -123,7 +125,7 @@ export default function PhoneLiveFeed() {
       <Image
         className={styles.frame}
         src="/icons/iphone.svg"
-        alt="Fplaces live venue feed displayed on a phone"
+        alt="fplaces live venue feed displayed on a phone"
         fill
         sizes="(max-width: 767px) 280px, 250px"
         unoptimized

@@ -189,7 +189,6 @@ a {
   font-size: 14px;
   font-weight: 300;
   letter-spacing: 0.035em;
-  text-transform: uppercase;
 }
 
 .hero h1 {
@@ -4126,6 +4125,14 @@ a {
   margin-inline: auto;
   display: grid;
   gap: 16px;
+}
+
+.faq-group-title {
+  margin: 24px 0 0;
+  color: #162427;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .faq-item {

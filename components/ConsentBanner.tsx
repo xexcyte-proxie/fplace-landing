@@ -37,7 +37,7 @@ export default function ConsentBanner() {
   return (
     <aside className="cb-banner" aria-label="Cookie consent">
       <p className="cb-copy">
-        We use cookies and analytics to improve Fplaces. You can accept or
+        We use cookies and analytics to improve fplaces. You can accept or
         decline.
       </p>
       <div className="cb-actions">

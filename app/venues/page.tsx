@@ -69,7 +69,7 @@ const venueTypes: VenueType[] = [
     title: "Convention centers",
     description:
       "Guide attendees straight to a specific booth or hall instead of wandering a massive show floor",
-    image: "convention centres.webp",
+    image: "covention-centres.png",
     alt: "Exhibition floor at a convention center",
   },
 ];
