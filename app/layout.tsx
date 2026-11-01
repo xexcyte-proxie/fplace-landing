@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   title: "fplaces — Find places, find people, find your way",
   description:
     "Navigate, discover, and share your way through any venue with fplaces.",
+  icons: {
+    icon: "/img/fplaces-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -536,11 +536,7 @@ export default function VenuesPage() {
             <div className="vn-contact-methods">
               <div className="vn-contact-method">
                 <span className="vn-contact-icon vn-mail-icon" aria-hidden="true" />
-                <span>Email</span>
-              </div>
-              <div className="vn-contact-method">
-                <span className="vn-contact-icon vn-phone-icon" aria-hidden="true" />
-                <span>Phone</span>
+                <span>hello@fplaces.com</span>
               </div>
             </div>
             <ul className="vn-social-list" aria-label="Social media">
