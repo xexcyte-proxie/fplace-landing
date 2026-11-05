@@ -14,7 +14,7 @@ const inter = Inter({
 const kanit = Kanit({
   variable: "--font-kanit",
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "700"],
+  weight: ["200", "300", "400", "500", "600", "700"],
   style: ["normal", "italic"],
 });
 

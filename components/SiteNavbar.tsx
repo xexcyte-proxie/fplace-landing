@@ -9,18 +9,6 @@ import { getNavigationLinks, type SitePage } from "./siteNavigation";
 export default function SiteNavbar({ page }: { page: SitePage }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigationLinks = getNavigationLinks(page);
-  const partnerHref =
-    page === "venues"
-      ? "#contact"
-      : page === "faq" || page === "features"
-        ? "/venues#contact"
-        : "#venues";
-  const actionHref =
-    page === "venues"
-      ? "#steps"
-      : page === "faq" || page === "features"
-        ? "/#our-approach"
-        : "#our-approach";
   const isVenuePage = page === "venues";
   const isFaqPage = page === "faq";
   const isFeaturesPage = page === "features";
@@ -64,9 +52,9 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
       </nav>
 
       <div className="header-actions">
-        <a
+        <Link
           className="header-button header-button-light"
-          href={partnerHref}
+          href="/venues#contact"
           onClick={() =>
             trackEvent("cta_click", {
               label: "Partner with us",
@@ -75,19 +63,16 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
           }
         >
           Partner with us
-        </a>
-        <a
+        </Link>
+        <button
           className="header-button header-button-dark"
-          href={actionHref}
-          onClick={() =>
-            trackEvent("cta_click", {
-              label: "See it in action",
-              page: window.location.pathname,
-            })
-          }
+          type="button"
+          disabled
+          aria-disabled="true"
+          tabIndex={-1}
         >
           See it in action
-        </a>
+        </button>
         <button
           className={`menu-toggle${isMobileMenuOpen ? " is-open" : ""}`}
           type="button"
@@ -127,22 +112,23 @@ export default function SiteNavbar({ page }: { page: SitePage }) {
           </a>
         ))}
         <div className="mobile-navigation-actions">
-          <a
+          <Link
             className="header-button header-button-light"
-            href={partnerHref}
+            href="/venues#contact"
             onClick={() => setIsMobileMenuOpen(false)}
             tabIndex={isMobileMenuOpen ? 0 : -1}
           >
             Partner with us
-          </a>
-          <a
+          </Link>
+          <button
             className="header-button header-button-dark"
-            href={actionHref}
-            onClick={() => setIsMobileMenuOpen(false)}
-            tabIndex={isMobileMenuOpen ? 0 : -1}
+            type="button"
+            disabled
+            aria-disabled="true"
+            tabIndex={-1}
           >
             See it in action
-          </a>
+          </button>
         </div>
       </nav>
     </header>

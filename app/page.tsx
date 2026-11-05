@@ -1,18 +1,69 @@
 ﻿"use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+  type MotionValue,
+} from "motion/react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from "react";
 import CtaBanner from "../components/CtaBanner";
 import PhoneLiveFeed from "../components/PhoneLiveFeed";
 import SiteFooter from "../components/SiteFooter";
 import SiteNavbar from "../components/SiteNavbar";
 import { trackEvent } from "../lib/analytics";
 
+// TEXT_MOTION: x and y are the maximum movement in px when the cursor is at
+// the edge of the row. NEGATIVE = moves AWAY from the cursor (depth effect);
+// POSITIVE = moves WITH the cursor; 0 = off on that axis. tiltX and tiltY are
+// the 3D tilt in degrees (0 = off). stiffness and damping control how quickly
+// each layer follows (lower stiffness = lazier, silkier).
+// Example: x: 20, y: 0 = follows the cursor sideways only.
+const TEXT_MOTION = {
+  heading: { x: -18, y: -12, stiffness: 110, damping: 22 },
+  paragraph: { x: -12, y: -8, stiffness: 80, damping: 20 },
+  button: { x: -7, y: -5, stiffness: 60, damping: 18 },
+  tiltX: 2.5,
+  tiltY: 3.5,
+};
+
+// Shared venue-row cursor light; movement values are px and opacities are 0-1.
+const LIGHT = {
+  size: 460, // Glow diameter in px.
+  strength: 0.14, // Opacity of the row glow.
+  spotlight: 0.16, // Card spotlight colour alpha at full brightness.
+  reach: 340, // Distance from a card edge where its light fades out.
+  edge: 0.35, // Card-edge highlight alpha at full brightness.
+  follow: 0.14, // Per-frame follow amount; lower is silkier and lazier.
+};
+
+type VenueLightState = {
+  frame: number | null;
+  pointerInside: boolean;
+  initialized: boolean;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  intensities: WeakMap<HTMLElement, number>;
+};
+
 const venueCategories = [
   {
     title: "Stadiums",
     description:
-      "Find your seats, gates, food stands, restrooms, and exits with ease",
+      "Find your seats, gates, food stands, restrooms, and exits with ease.",
     icon: "/icons/tabler-icon-building-stadium.svg",
     width: 30,
     height: 30,
@@ -41,6 +92,408 @@ const venueCategories = [
     height: 32,
   },
 ];
+
+const navigateHeading = "Navigate any venue with ease";
+
+type VenueMotionCardProps = {
+  category: (typeof venueCategories)[number];
+  index: number;
+  desktop: boolean;
+  reducedMotion: boolean;
+  forceVisible: boolean;
+  mx: MotionValue<number>;
+  my: MotionValue<number>;
+};
+
+function VenueMotionCard({
+  category,
+  index,
+  desktop,
+  reducedMotion,
+  forceVisible,
+  mx,
+  my,
+}: VenueMotionCardProps) {
+  const [entered, setEntered] = useState(false);
+  const depth = [0.6, 1, 1.2, 0.8][index];
+  const cardX = useTransform(mx, (value) => value * depth * 26);
+  const cardY = useTransform(my, (value) => value * depth * 20);
+  const rotateX = useTransform(my, (value) => value * depth * -4);
+  const rotateY = useTransform(mx, (value) => value * depth * 5);
+  const iconX = useTransform(mx, (value) => value * 8);
+  const iconY = useTransform(my, (value) => value * 6);
+  const cardVisible = reducedMotion || forceVisible;
+
+  return (
+    <motion.article
+      className="venue-card reveal-item"
+      initial={
+        reducedMotion
+          ? { opacity: 0 }
+          : { opacity: 0, scale: 0.94, filter: "blur(6px)" }
+      }
+      variants={{
+        visible: {
+          opacity: 1,
+          scale: 1,
+          filter: "blur(0px)",
+          transition: {
+            opacity: { duration: 0.5 },
+            scale: { type: "spring", stiffness: 200, damping: 24 },
+            filter: { type: "spring", stiffness: 200, damping: 24 },
+          },
+        },
+      }}
+      animate={
+        cardVisible
+          ? { opacity: 1, scale: 1, filter: "blur(0px)" }
+          : undefined
+      }
+      transition={
+        reducedMotion ? { opacity: { duration: 0.3 } } : undefined
+      }
+      whileHover={
+        desktop && !reducedMotion
+          ? {
+              scale: 1.03,
+              transition: {
+                scale: { type: "spring", stiffness: 320, damping: 22 },
+              },
+            }
+          : undefined
+      }
+      whileTap={!reducedMotion ? { scale: 0.97 } : undefined}
+      style={
+        desktop && !reducedMotion
+          ? {
+              x: cardX,
+              y: cardY,
+              rotateX,
+              rotateY,
+              transformStyle: "preserve-3d",
+              willChange: "transform",
+            }
+          : undefined
+      }
+    >
+      {desktop && !reducedMotion ? (
+        <span className="venue-card-light" aria-hidden="true" />
+      ) : null}
+      <motion.span
+        className="venue-icon-tile"
+        aria-hidden="true"
+        initial={reducedMotion ? { opacity: 0 } : { scale: 0.6 }}
+        whileInView={reducedMotion ? undefined : { scale: 1 }}
+        animate={
+          reducedMotion || forceVisible
+            ? { opacity: 1, scale: 1 }
+            : entered && !desktop
+              ? { y: [0, -3, 0] }
+              : undefined
+        }
+        viewport={{ once: true, amount: 0.25 }}
+        transition={
+          reducedMotion
+            ? { opacity: { duration: 0.3 } }
+            : entered && !desktop
+              ? {
+                  y: {
+                    duration: 6 + index * 0.2,
+                    ease: "easeInOut",
+                    repeat: Infinity,
+                    repeatType: "loop",
+                    delay: index * 0.4,
+                  },
+                }
+              : {
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 15,
+                  delay: index * 0.11 + 0.15,
+                }
+        }
+        onAnimationComplete={() => setEntered(true)}
+        style={
+          desktop && !reducedMotion
+            ? { x: iconX, y: iconY, willChange: "transform" }
+            : undefined
+        }
+      >
+        <span
+          className="venue-icon"
+          style={{
+            width: category.width,
+            height: category.height,
+            maskImage: `url(${category.icon})`,
+            WebkitMaskImage: `url(${category.icon})`,
+          }}
+        />
+      </motion.span>
+      <h3>{category.title}</h3>
+      <p>{category.description}</p>
+    </motion.article>
+  );
+}
+
+function NavigateVenueIntro({
+  desktop,
+  reducedMotion,
+  forceVisible,
+  rawPointerX,
+  rawPointerY,
+  introRef,
+}: {
+  desktop: boolean;
+  reducedMotion: boolean;
+  forceVisible: boolean;
+  rawPointerX: MotionValue<number>;
+  rawPointerY: MotionValue<number>;
+  introRef: RefObject<HTMLDivElement | null>;
+}) {
+  const rawButtonX = useMotionValue(0);
+  const rawButtonY = useMotionValue(0);
+  const buttonX = useSpring(rawButtonX, { stiffness: 180, damping: 20 });
+  const buttonY = useSpring(rawButtonY, { stiffness: 180, damping: 20 });
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const paragraphRef = useRef<HTMLParagraphElement>(null);
+  const buttonRef = useRef<HTMLAnchorElement>(null);
+  const headingX = useSpring(rawPointerX, {
+    stiffness: TEXT_MOTION.heading.stiffness,
+    damping: TEXT_MOTION.heading.damping,
+    mass: 0.6,
+  });
+  const headingY = useSpring(rawPointerY, {
+    stiffness: TEXT_MOTION.heading.stiffness,
+    damping: TEXT_MOTION.heading.damping,
+    mass: 0.6,
+  });
+  const paragraphX = useSpring(rawPointerX, {
+    stiffness: TEXT_MOTION.paragraph.stiffness,
+    damping: TEXT_MOTION.paragraph.damping,
+    mass: 0.6,
+  });
+  const paragraphY = useSpring(rawPointerY, {
+    stiffness: TEXT_MOTION.paragraph.stiffness,
+    damping: TEXT_MOTION.paragraph.damping,
+    mass: 0.6,
+  });
+  const textButtonX = useSpring(rawPointerX, {
+    stiffness: TEXT_MOTION.button.stiffness,
+    damping: TEXT_MOTION.button.damping,
+    mass: 0.6,
+  });
+  const textButtonY = useSpring(rawPointerY, {
+    stiffness: TEXT_MOTION.button.stiffness,
+    damping: TEXT_MOTION.button.damping,
+    mass: 0.6,
+  });
+  const rotateY = useSpring(
+    useTransform(rawPointerX, (value) => value * TEXT_MOTION.tiltY),
+    { stiffness: 90, damping: 20, mass: 0.6 },
+  );
+  const rotateX = useSpring(
+    useTransform(rawPointerY, (value) => value * -TEXT_MOTION.tiltX),
+    { stiffness: 90, damping: 20, mass: 0.6 },
+  );
+
+  useEffect(() => {
+    if (!desktop || reducedMotion) return;
+
+    const subscriptions: Array<() => void> = [];
+    const bindLayer = (
+      node: HTMLElement | null,
+      x: MotionValue<number>,
+      y: MotionValue<number>,
+      strength: { x: number; y: number },
+    ) => {
+      if (!node) return;
+      subscriptions.push(
+        x.on("change", (value) =>
+          node.style.setProperty("--px", `${value * strength.x}px`),
+        ),
+        y.on("change", (value) =>
+          node.style.setProperty("--py", `${value * strength.y}px`),
+        ),
+      );
+    };
+
+    bindLayer(headingRef.current, headingX, headingY, TEXT_MOTION.heading);
+    bindLayer(
+      paragraphRef.current,
+      paragraphX,
+      paragraphY,
+      TEXT_MOTION.paragraph,
+    );
+    bindLayer(buttonRef.current, textButtonX, textButtonY, TEXT_MOTION.button);
+
+    return () => subscriptions.forEach((unsubscribe) => unsubscribe());
+  }, [
+    desktop,
+    headingX,
+    headingY,
+    paragraphX,
+    paragraphY,
+    reducedMotion,
+    textButtonX,
+    textButtonY,
+  ]);
+
+  const moveButton = (event: ReactPointerEvent<HTMLAnchorElement>) => {
+    if (!desktop || reducedMotion || event.pointerType !== "mouse") return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const dx = event.clientX - (bounds.left + bounds.width / 2);
+    const dy = event.clientY - (bounds.top + bounds.height / 2);
+    const distance = Math.hypot(dx, dy);
+    const strength = Math.min(1, Math.max(0, 60 - distance) / 60) * 8;
+    rawButtonX.set(distance < 60 ? (dx / (distance || 1)) * strength : 0);
+    rawButtonY.set(distance < 60 ? (dy / (distance || 1)) * strength : 0);
+  };
+
+  return (
+    <motion.div
+      className={`venue-intro reveal-item reveal-after-cards${desktop && !reducedMotion ? " nv-motion-active" : ""}`}
+      ref={introRef}
+      initial={reducedMotion ? { opacity: 0 } : undefined}
+      animate={
+        reducedMotion || forceVisible
+          ? { opacity: 1 }
+          : undefined
+      }
+      transition={{ opacity: { duration: 0.3 } }}
+      style={
+        desktop && !reducedMotion
+          ? { rotateX, rotateY, transformStyle: "preserve-3d" }
+          : undefined
+      }
+    >
+      <motion.h2
+        ref={headingRef}
+        aria-label={navigateHeading}
+        initial={reducedMotion ? { opacity: 0 } : undefined}
+        animate={reducedMotion ? { opacity: 1 } : undefined}
+        transition={{ duration: 0.3 }}
+      >
+        {navigateHeading.split(" ").map((word, index) => (
+          <Fragment key={word}>
+            <span
+              style={{
+                display: "inline-block",
+                overflow: "hidden",
+                paddingBottom: "0.12em",
+                marginBottom: "-0.12em",
+              }}
+            >
+              <motion.span
+                aria-hidden="true"
+                initial={reducedMotion ? { opacity: 0 } : { y: "105%" }}
+                whileInView={
+                  reducedMotion || forceVisible ? undefined : { y: "0%" }
+                }
+                animate={
+                  reducedMotion
+                    ? { opacity: 1 }
+                    : forceVisible
+                      ? { y: "0%" }
+                      : undefined
+                }
+                viewport={{ once: true, amount: 0.6 }}
+                transition={
+                  reducedMotion
+                    ? { opacity: { duration: 0.3 } }
+                    : {
+                        type: "spring",
+                        stiffness: 180,
+                        damping: 22,
+                        delay: index * 0.06,
+                      }
+                }
+              >
+                {word}
+              </motion.span>
+            </span>
+            {index < navigateHeading.split(" ").length - 1 ? " " : null}
+          </Fragment>
+        ))}
+      </motion.h2>
+      <motion.p
+        ref={paragraphRef}
+        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+        whileInView={
+          reducedMotion || forceVisible
+            ? undefined
+            : { opacity: 1, y: 0 }
+        }
+        animate={
+          reducedMotion || forceVisible ? { opacity: 1, y: 0 } : undefined
+        }
+        viewport={{ once: true, amount: 0.6 }}
+        transition={
+          reducedMotion
+            ? { opacity: { duration: 0.3 } }
+            : {
+                type: "spring",
+                stiffness: 180,
+                damping: 22,
+                delay: 0.25,
+              }
+        }
+      >
+        <span>
+          From stadiums to airports, malls, and train stations, etc fplaces
+        </span>
+        <span className="nv-break">
+          {" "}helps you find your way faster and stay connected to what&apos;s
+        </span>
+        <span className="nv-break"> happening around you.</span>
+      </motion.p>
+      <motion.a
+        ref={buttonRef}
+        className="explore-venues-button"
+        href="/venues#venue-types"
+        whileHover={desktop && !reducedMotion ? "hover" : undefined}
+        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+        whileInView={
+          reducedMotion || forceVisible
+            ? undefined
+            : { opacity: 1, y: 0 }
+        }
+        animate={
+          reducedMotion || forceVisible ? { opacity: 1, y: 0 } : undefined
+        }
+        viewport={{ once: true, amount: 0.6 }}
+        transition={
+          reducedMotion
+            ? { opacity: { duration: 0.3 } }
+            : {
+                type: "spring",
+                stiffness: 180,
+                damping: 22,
+                delay: 0.4,
+              }
+        }
+        whileTap={!reducedMotion ? { scale: 0.97 } : undefined}
+        onPointerMove={moveButton}
+        onPointerLeave={() => {
+          rawButtonX.set(0);
+          rawButtonY.set(0);
+        }}
+        style={
+          desktop && !reducedMotion
+            ? { x: buttonX, y: buttonY, willChange: "transform" }
+            : undefined
+        }
+      >
+        Explore more venues
+        <motion.span
+          className="venue-link-arrow"
+          aria-hidden="true"
+          variants={{ hover: { x: 4, y: -4 } }}
+          transition={{ type: "spring", stiffness: 320, damping: 22 }}
+        />
+      </motion.a>
+    </motion.div>
+  );
+}
 
 const venueChallenges = [
   {
@@ -140,6 +593,165 @@ function VenuePostCard({ post }: { post: (typeof liveVenuePosts)[number] }) {
 }
 
 export default function Home() {
+  const reducedMotion = Boolean(useReducedMotion());
+  const [desktopMotion, setDesktopMotion] = useState(false);
+  const [forceVenueVisible, setForceVenueVisible] = useState(false);
+  const rawPointerX = useMotionValue(0);
+  const rawPointerY = useMotionValue(0);
+  const introRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const rowLightRef = useRef<HTMLSpanElement>(null);
+  const lightState = useRef<VenueLightState>({
+    frame: null,
+    pointerInside: false,
+    initialized: false,
+    x: 0,
+    y: 0,
+    targetX: 0,
+    targetY: 0,
+    intensities: new WeakMap(),
+  });
+  const mx = useSpring(rawPointerX, { stiffness: 90, damping: 20, mass: 0.6 });
+  const my = useSpring(rawPointerY, { stiffness: 90, damping: 20, mass: 0.6 });
+  useEffect(() => {
+    const desktopQuery = window.matchMedia(
+      "(min-width: 1025px) and (pointer: fine)",
+    );
+    const updateDesktop = () =>
+      setDesktopMotion(desktopQuery.matches && !reducedMotion);
+    updateDesktop();
+    desktopQuery.addEventListener("change", updateDesktop);
+    return () => desktopQuery.removeEventListener("change", updateDesktop);
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    const fallback = window.setTimeout(() => setForceVenueVisible(true), 2500);
+    return () => window.clearTimeout(fallback);
+  }, []);
+
+  useEffect(() => {
+    const state = lightState.current;
+    return () => {
+      const { frame } = state;
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      state.frame = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (desktopMotion && !reducedMotion) return;
+    const state = lightState.current;
+    if (state.frame !== null) window.cancelAnimationFrame(state.frame);
+    state.frame = null;
+    state.pointerInside = false;
+    state.initialized = false;
+    state.x = 0;
+    state.y = 0;
+    state.targetX = 0;
+    state.targetY = 0;
+    state.intensities = new WeakMap();
+    rowRef.current?.style.setProperty("--light-opacity", "0");
+    rowRef.current
+      ?.querySelectorAll<HTMLElement>(".venue-card")
+      .forEach((card) => {
+        card.style.removeProperty("--mx");
+        card.style.removeProperty("--my");
+        card.style.removeProperty("--g");
+      });
+    rawPointerX.set(0);
+    rawPointerY.set(0);
+  }, [desktopMotion, rawPointerX, rawPointerY, reducedMotion]);
+
+  const animateVenueLight = () => {
+    const state = lightState.current;
+    state.frame = null;
+    if (!desktopMotion || reducedMotion) return;
+
+    const row = rowRef.current;
+    const glow = rowLightRef.current;
+    if (!row || !glow) return;
+
+    state.x += (state.targetX - state.x) * LIGHT.follow;
+    state.y += (state.targetY - state.y) * LIGHT.follow;
+    const rowBounds = row.getBoundingClientRect();
+    const pointerX = rowBounds.left + state.x;
+    const pointerY = rowBounds.top + state.y;
+    const cards = Array.from(
+      row.querySelectorAll<HTMLElement>(".venue-card"),
+    ).map((element) => ({ element, bounds: element.getBoundingClientRect() }));
+
+    const nextCardValues = cards.map(({ element, bounds }) => {
+      const distanceX = Math.max(bounds.left - pointerX, 0, pointerX - bounds.right);
+      const distanceY = Math.max(bounds.top - pointerY, 0, pointerY - bounds.bottom);
+      const distance = Math.hypot(distanceX, distanceY);
+      const target = state.pointerInside
+        ? distance === 0
+          ? 1
+          : Math.max(0, 1 - distance / LIGHT.reach)
+        : 0;
+      const current = state.intensities.get(element) ?? 0;
+      const value = current + (target - current) * LIGHT.follow;
+      return {
+        element,
+        x: pointerX - bounds.left,
+        y: pointerY - bounds.top,
+        value: Math.abs(target - value) < 0.001 ? target : value,
+        settled: Math.abs(target - value) < 0.001,
+      };
+    });
+
+    glow.style.setProperty("--lx", `${state.x}px`);
+    glow.style.setProperty("--ly", `${state.y}px`);
+    nextCardValues.forEach(({ element, x, y, value }) => {
+      state.intensities.set(element, value);
+      element.style.setProperty("--mx", `${x}px`);
+      element.style.setProperty("--my", `${y}px`);
+      element.style.setProperty("--g", `${value}`);
+    });
+
+    const settled =
+      Math.abs(state.targetX - state.x) < 0.1 &&
+      Math.abs(state.targetY - state.y) < 0.1 &&
+      nextCardValues.every(({ settled: cardSettled }) => cardSettled);
+    if (!settled) {
+      state.frame = window.requestAnimationFrame(animateVenueLight);
+    }
+  };
+
+  const scheduleVenueLight = () => {
+    const state = lightState.current;
+    if (state.frame === null) {
+      state.frame = window.requestAnimationFrame(animateVenueLight);
+    }
+  };
+
+  const moveVenueRow = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!desktopMotion || reducedMotion || event.pointerType !== "mouse") return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    rawPointerX.set((event.clientX - bounds.left) / bounds.width - 0.5);
+    rawPointerY.set((event.clientY - bounds.top) / bounds.height - 0.5);
+    const state = lightState.current;
+    state.targetX = event.clientX - bounds.left;
+    state.targetY = event.clientY - bounds.top;
+    if (!state.initialized) {
+      state.x = state.targetX;
+      state.y = state.targetY;
+      state.initialized = true;
+    }
+    state.pointerInside = true;
+    rowRef.current?.style.setProperty("--light-opacity", "1");
+    scheduleVenueLight();
+  };
+
+  const leaveVenueRow = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!desktopMotion || reducedMotion || event.pointerType !== "mouse") return;
+    rawPointerX.set(0);
+    rawPointerY.set(0);
+    lightState.current.pointerInside = false;
+    rowRef.current?.style.setProperty("--light-opacity", "0");
+    scheduleVenueLight();
+  };
+
   useEffect(() => {
     const revealItems = document.querySelectorAll<HTMLElement>(
       "[data-reveal-item]",
@@ -290,15 +902,6 @@ export default function Home() {
                   height={16}
                 />
               </a>
-              <a className="secondary-button" href="#our-approach">
-                How it works
-                <Image
-                  src="/icons/arrow-down.svg"
-                  alt=""
-                  width={16}
-                  height={18}
-                />
-              </a>
             </div>
           </div>
 
@@ -348,45 +951,63 @@ export default function Home() {
         aria-label="Venue navigation"
         data-reveal-root
       >
-        <div className="venue-section-inner venue-layout">
-          <div className="venue-grid" aria-label="Types of venues">
+        <motion.div
+          className="venue-section-inner venue-layout"
+          ref={rowRef}
+          style={
+            {
+              perspective: desktopMotion && !reducedMotion ? 1200 : undefined,
+              "--l-size": `${LIGHT.size}px`,
+              "--l-strength": LIGHT.strength,
+              "--l-spot": LIGHT.spotlight,
+              "--l-edge": LIGHT.edge,
+              "--light-opacity": 0,
+            } as CSSProperties
+          }
+          onPointerMove={moveVenueRow}
+          onPointerLeave={leaveVenueRow}
+        >
+          {desktopMotion && !reducedMotion ? (
+            <span
+              ref={rowLightRef}
+              className="venue-row-light"
+              aria-hidden="true"
+            />
+          ) : null}
+          <motion.div
+            className="venue-grid"
+            aria-label="Types of venues"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.25 }}
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.11 } },
+            }}
+          >
             {venueCategories.map((category, index) => (
-              <article
-                className="venue-card reveal-item"
-                data-reveal-item
+              <VenueMotionCard
                 key={category.title}
-                style={{ transitionDelay: `${index * 80}ms` }}
-              >
-<span className="venue-icon-tile" aria-hidden="true">
-                    <span
-                      className="venue-icon"
-                      style={{
-                        width: category.width,
-                        height: category.height,
-                        maskImage: `url(${category.icon})`,
-                        WebkitMaskImage: `url(${category.icon})`,
-                      }}
-                    />
-                  </span>
-                <h3>{category.title}</h3>
-                <p>{category.description}</p>
-              </article>
+                category={category}
+                index={index}
+                desktop={desktopMotion}
+                reducedMotion={reducedMotion}
+                forceVisible={forceVenueVisible}
+                mx={mx}
+                my={my}
+              />
             ))}
-          </div>
+          </motion.div>
 
-          <div className="venue-intro reveal-item reveal-after-cards" data-reveal-item>
-            <h2>Navigate any venue with ease</h2>
-            <p>
-              From stadiums to airports, malls, and train stations, etc. fplaces
-              helps you find your way faster and stay connected to what&apos;s
-              happening around you.
-            </p>
-            <a className="explore-venues-button" href="/venues">
-              Explore more venues
-              <span className="venue-link-arrow" aria-hidden="true" />
-            </a>
-          </div>
-        </div>
+          <NavigateVenueIntro
+            desktop={desktopMotion}
+            reducedMotion={reducedMotion}
+            forceVisible={forceVenueVisible}
+            rawPointerX={rawPointerX}
+            rawPointerY={rawPointerY}
+            introRef={introRef}
+          />
+        </motion.div>
       </section>
 
       <section
