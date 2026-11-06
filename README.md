@@ -8,9 +8,7 @@ Fplaces helps people find their way faster and stay connected to what is happeni
 
 - **Navigate with ease.** Follow clear directions on your phone to reach your destination inside large venues.
 - **Live feed.** Read short, real-time posts from people in the same venue, such as queue times, parking updates and food spots.
-- **Private by design.** Everyone posts under a pseudo name, posts are scoped to your venue, and posts auto delete after 2 hours so the feed stays fresh.
-- **Safer community.** Every post has a flag button, and flagged posts are reviewed by the team.
-- **Tips from past visitors.** Know what to expect before you arrive.
+
 
 ## About this repository
 
