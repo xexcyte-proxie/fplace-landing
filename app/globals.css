@@ -7580,3 +7580,168 @@ button,
     pointer-events: none;
   }
 }
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .landing .venue-section .venue-row-light {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    clip-path: inset(0);
+    pointer-events: none;
+  }
+
+  .landing .venue-section .venue-row-light::before {
+    position: absolute;
+    top: var(--ly, 0px);
+    left: var(--lx, 0px);
+    width: var(--l-size, 460px);
+    height: var(--l-size, 460px);
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(244, 119, 50, var(--l-strength, 0.14)),
+      transparent 65%
+    );
+    filter: blur(24px);
+    opacity: var(--light-opacity, 0);
+    content: "";
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: opacity 250ms ease;
+    will-change: transform;
+  }
+
+  .landing .venue-section .venue-card {
+    box-shadow:
+      0 0 0 1px
+        rgba(244 119 50 / calc(var(--g, 0) * var(--l-edge, 0.35))),
+      0 0 36px rgba(244 119 50 / calc(var(--g, 0) * 0.12)),
+      0 10px 30px rgb(21 96 104 / 12%),
+      inset 0 1px 0 rgb(255 255 255 / 80%),
+      inset 0 -1px 0 rgb(255 255 255 / 25%);
+  }
+
+  .landing .venue-section .venue-card > .venue-card-light {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      rgba(
+        244 119 50 /
+          calc(var(--g, 0) * var(--l-spot, 0.16))
+      ),
+      transparent 55%
+    );
+    pointer-events: none;
+  }
+}
+
+/* PHONE MOBILE */
+@media (max-width: 768px) {
+  .real-time-section {
+    box-sizing: border-box;
+    min-height: 0;
+    padding-inline: 20px;
+    overflow-x: clip;
+  }
+
+  .real-time-inner {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 0;
+    padding-block: 48px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .real-time-copy {
+    grid-column: 1;
+    grid-row: 1;
+    max-width: none;
+    justify-self: stretch;
+    text-align: left;
+  }
+
+  .real-time-heading {
+    font-size: clamp(25px, 7vw, 32px);
+  }
+
+  .real-time-description {
+    margin: 16px 0 22px;
+    font-size: 14px;
+  }
+
+  .real-time-benefits {
+    gap: 12px;
+  }
+
+  .real-time-benefit {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .real-time-benefit img {
+    width: 18px;
+    height: 18px;
+  }
+
+  .real-time-left-feed {
+    display: none;
+  }
+
+  .real-time-phone {
+    grid-column: 1;
+    grid-row: 2;
+    width: min(86vw, 340px);
+    max-width: 100%;
+    justify-self: center;
+  }
+
+  .real-time-section .plf-content {
+    pointer-events: none;
+  }
+
+  .real-time-section .plf-postList {
+    row-gap: calc(var(--u) * 0.5) !important;
+  }
+
+  .real-time-section .plf-post {
+    padding-block: calc(var(--u) * 2);
+  }
+
+  .real-time-section .plf-post .plf-postMessage {
+    font-size: calc(var(--u) * 9.95);
+  }
+}
+/* PHONE TEXT FIT */
+@media (max-width: 768px) {
+  .real-time-section .plf-postBody {
+    width: 100%;
+    gap: 0;
+  }
+
+  .real-time-section .plf-post .plf-postMessage {
+    width: 84%;
+    flex: 0 0 84%;
+    font-size: calc(var(--u) * 8.775);
+    line-height: 1.35;
+  }
+
+  .real-time-section .plf-post .plf-chip {
+    max-width: 16%;
+  }
+
+  .real-time-section .plf-postList:has(> .plf-post:nth-child(4)) {
+    justify-content: space-between !important;
+    row-gap: 0 !important;
+  }
+}
+@media (max-width: 768px) {
+  .real-time-section .plf-phone {
+    width: 100%;
+    max-width: none;
+  }
+}

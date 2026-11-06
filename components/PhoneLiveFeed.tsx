@@ -5,19 +5,134 @@ import {
   AnimatePresence,
   motion,
   useAnimationControls,
+  useMotionValue,
   useReducedMotion,
+  useSpring,
 } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import {
   FEED_TIMING,
+  scaleFeedTiming,
   useFeedScript,
   type FeedPost,
 } from "@/lib/useFeedScript";
+
+const MOTION = {
+  spring: { type: "spring" as const, stiffness: 320, damping: 28, mass: 0.9 },
+  layoutSpring: { type: "spring" as const, stiffness: 260, damping: 26, mass: 0.9 },
+  soft: { type: "spring" as const, stiffness: 140, damping: 22 },
+  ease: [0.22, 1, 0.36, 1] as const,
+  offsets: { desktop: 28, mobile: 18 },
+  stagger: 0.035,
+  partDuration: 0.35,
+  countDuration: 0.28,
+  colorDuration: 0.25,
+  iconDuration: 0.35,
+  flagPulseDuration: 0.45,
+  iconPeakTime: 0.45,
+  countRollOffset: { enter: "100%", exit: "-100%" },
+  bannerDuration: FEED_TIMING.FLAG_BANNER_MS / 1000,
+  bannerBarDuration: 0.5,
+  bannerOffset: -6,
+  entryScale: 0.975,
+  entryBlur: { desktop: 6, mobile: 4 },
+  exitOffset: -8,
+  exitBlur: 4,
+  avatarScale: 0.8,
+  labelOffset: -6,
+  messageOffset: 6,
+  chipScale: 0.85,
+  iconScale: 1.18,
+  flagScale: 1.12,
+  tiltSpring: { stiffness: 120, damping: 20 },
+  tiltMax: { x: 3, y: 4 },
+  perspective: 900,
+  clearFilter: "blur(0px)",
+  feedMask:
+    "linear-gradient(to bottom, transparent 0%, #000 calc(var(--u) * 20), #000 100%)",
+  clearDuration: scaleFeedTiming(FEED_TIMING.CLEAR_MS) / 1000,
+} as const;
+
+const ARRIVAL = {
+  sweep: {
+    desktopDuration: 1.1,
+    mobileDuration: 0.9,
+    delay: 0.15,
+    width: "45%",
+    fromX: "-110%",
+    toX: "250%",
+    alpha: 0.14,
+  },
+  glow: {
+    fadeInDuration: 0.5,
+    fadeOutDuration: 1.6,
+    ringAlpha: 0.22,
+    desktopAlpha: 0.1,
+    mobileAlpha: 0.08,
+  },
+  reducedDuration: 1,
+  ease: [0.22, 1, 0.36, 1] as const,
+  orangeRgb: "244,119,50",
+  redRgb: "255,56,60",
+} as const;
 
 const styles = new Proxy({} as Record<string, string>, {
   get: (_target, property: string | symbol) =>
     typeof property === "string" ? `plf-${property}` : undefined,
 });
+
+function CountSlot({
+  value,
+  className,
+  reducedMotion,
+}: {
+  value: number;
+  className: string;
+  reducedMotion: boolean;
+}) {
+  const slotStyle = {
+    position: "absolute" as const,
+    left: "calc(100% + calc(var(--u) * 2.14))",
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: "max-content",
+    minWidth: 0,
+    flex: "none",
+    fontVariantNumeric: "tabular-nums" as const,
+    textAlign: "left" as const,
+    display: "inline-flex",
+    alignItems: "center",
+    overflow: "hidden",
+    height: "1.25em",
+    whiteSpace: "nowrap" as const,
+    opacity: value > 0 ? 1 : 0,
+    pointerEvents: "none" as const,
+  };
+
+  return (
+    <span className={className} style={slotStyle}>
+      {value > 0 ? (
+        reducedMotion ? (
+          value
+        ) : (
+          <AnimatePresence mode="sync">
+            <motion.span
+              key={value}
+              initial={{ y: MOTION.countRollOffset.enter, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: MOTION.countRollOffset.exit, opacity: 0 }}
+              transition={{ duration: MOTION.countDuration, ease: MOTION.ease }}
+            >
+              {value}
+            </motion.span>
+          </AnimatePresence>
+        )
+      ) : (
+        <small style={{ visibility: "hidden" }}>0</small>
+      )}
+    </span>
+  );
+}
 
 function PhonePost({
   post,
@@ -29,37 +144,43 @@ function PhonePost({
   isMobile: boolean;
 }) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [arrivalStarted, setArrivalStarted] = useState(false);
+  const [isArrivalAnimating, setIsArrivalAnimating] = useState(false);
   const commentIconControls = useAnimationControls();
   const upvoteIconControls = useAnimationControls();
   const flagIconControls = useAnimationControls();
-  const countStyle = {
-    width: "2ch",
-    minWidth: "2ch",
-    flex: "0 0 2ch",
-    marginLeft: "0.25em",
-    fontVariantNumeric: "tabular-nums" as const,
-    textAlign: "left" as const,
-  };
+  const entryOffset = MOTION.offsets[isMobile ? "mobile" : "desktop"];
+  const arrivalTone = post.story === "flagged" ? "red" : "orange";
+  const arrivalRgb =
+    arrivalTone === "red" ? ARRIVAL.redRgb : ARRIVAL.orangeRgb;
+  const arrivalSweep = `rgba(${arrivalRgb},${ARRIVAL.sweep.alpha})`;
+  const arrivalRing = `rgba(${arrivalRgb},${ARRIVAL.glow.ringAlpha})`;
+  const glowAlpha = isMobile
+    ? ARRIVAL.glow.mobileAlpha
+    : ARRIVAL.glow.desktopAlpha;
+  const glowDuration =
+    ARRIVAL.glow.fadeInDuration + ARRIVAL.glow.fadeOutDuration;
 
   useEffect(() => {
     const controls = [
-      [commentIconControls, post.comments],
-      [upvoteIconControls, post.upvotes],
-      [flagIconControls, post.flagCount],
+      [commentIconControls, post.comments, false],
+      [upvoteIconControls, post.upvotes, false],
+      [flagIconControls, post.flagCount, true],
     ] as const;
-    controls.forEach(([iconControls, count]) => {
+    controls.forEach(([iconControls, count, isFlag]) => {
       if (!reducedMotion && count > 0) {
-        const spring = {
-          transition: {
-            type: "spring" as const,
-            stiffness: FEED_TIMING.MOTION.ICON_SPRING.STIFFNESS,
-            damping: FEED_TIMING.MOTION.ICON_SPRING.DAMPING,
-            mass: FEED_TIMING.MOTION.ICON_SPRING.MASS,
-          },
+        const transition = {
+          type: "tween" as const,
+          duration: isFlag ? MOTION.flagPulseDuration : MOTION.iconDuration,
+          ease: "easeInOut" as const,
+          times: [0, MOTION.iconPeakTime, 1],
         };
-        void iconControls
-          .start({ scale: 1.28, ...spring })
-          .then(() => iconControls.start({ scale: 1, ...spring }));
+        void iconControls.start({
+          scale: isFlag
+            ? [1, MOTION.flagScale, 1]
+            : [1, MOTION.iconScale, 1],
+          transition,
+        }).catch(() => {});
       } else {
         iconControls.set({ scale: 1 });
       }
@@ -83,10 +204,9 @@ function PhonePost({
           ? { opacity: 0 }
           : {
               opacity: 0,
-              y: isMobile ? -20 : -28,
-              scale: 0.96,
-              ...(isMobile ? {} : { filter: "blur(6px)" }),
-              boxShadow: "0 0 0 2px rgba(244,119,50,0.35)",
+              y: entryOffset,
+              scale: MOTION.entryScale,
+              filter: `blur(${MOTION.entryBlur[isMobile ? "mobile" : "desktop"]}px)`,
             }
       }
       animate={
@@ -96,70 +216,131 @@ function PhonePost({
               opacity: 1,
               y: 0,
               scale: 1,
-              ...(isMobile ? {} : { filter: "blur(0px)" }),
-              boxShadow: "0 0 0 0px rgba(244,119,50,0)",
+              filter: MOTION.clearFilter,
             }
       }
-      exit={{
-        opacity: 0,
-        ...(reducedMotion
-          ? {}
-          : { scale: 0.96, ...(!isMobile ? { filter: "blur(4px)" } : {}) }),
-        transition: { duration: FEED_TIMING.MOTION.EXIT / 1000, ease: "easeOut" },
-      }}
       transition={{
-        y: {
-          type: "spring",
-          stiffness: FEED_TIMING.MOTION.ENTRY_SPRING.STIFFNESS,
-          damping: FEED_TIMING.MOTION.ENTRY_SPRING.DAMPING,
-          mass: FEED_TIMING.MOTION.ENTRY_SPRING.MASS,
-          delay: reducedMotion ? 0 : FEED_TIMING.MOTION.ENTRY_DELAY / 1000,
-        },
-        scale: {
-          type: "spring",
-          stiffness: FEED_TIMING.MOTION.ENTRY_SPRING.STIFFNESS,
-          damping: FEED_TIMING.MOTION.ENTRY_SPRING.DAMPING,
-          mass: FEED_TIMING.MOTION.ENTRY_SPRING.MASS,
-          delay: reducedMotion ? 0 : FEED_TIMING.MOTION.ENTRY_DELAY / 1000,
-        },
-        opacity: {
-          duration: FEED_TIMING.MOTION.ENTRY_OPACITY / 1000,
-          delay: reducedMotion ? 0 : FEED_TIMING.MOTION.ENTRY_DELAY / 1000,
-        },
-        filter: {
-          duration: FEED_TIMING.MOTION.ENTRY_FILTER / 1000,
-          delay: reducedMotion ? 0 : FEED_TIMING.MOTION.ENTRY_DELAY / 1000,
-        },
-        boxShadow: {
-          duration: FEED_TIMING.HIGHLIGHT_MS / 1000,
-          delay:
-            (FEED_TIMING.MOTION.ENTRY_DELAY +
-              FEED_TIMING.MOTION.ENTRY_FILTER) /
-            1000,
-        },
-        layout: {
-          type: "spring",
-          stiffness: FEED_TIMING.MOTION.LAYOUT_SPRING.STIFFNESS,
-          damping: FEED_TIMING.MOTION.LAYOUT_SPRING.DAMPING,
-        },
+        ...MOTION.spring,
+        y: MOTION.spring,
+        scale: MOTION.spring,
+        layout: MOTION.layoutSpring,
+        opacity: { duration: MOTION.partDuration, ease: MOTION.ease },
+        filter: { duration: MOTION.partDuration, ease: MOTION.ease },
       }}
-      style={{ willChange: isAnimating ? "transform, opacity, filter" : undefined }}
+      style={{
+        willChange: isAnimating
+          ? "transform, opacity, filter"
+          : undefined,
+        pointerEvents: "none",
+        position: "relative",
+        overflow: "visible",
+        borderRadius: "inherit",
+        isolation: "isolate",
+      }}
       onAnimationStart={() => setIsAnimating(true)}
-      onAnimationComplete={() => setIsAnimating(false)}
+      onAnimationComplete={() => {
+        setIsAnimating(false);
+        if (!arrivalStarted) {
+          setArrivalStarted(true);
+          setIsArrivalAnimating(true);
+        }
+      }}
     >
-      <div className={styles.postMeta}>
+      {!reducedMotion && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            zIndex: 0,
+            inset: 0,
+            overflow: "hidden",
+            borderRadius: "inherit",
+            pointerEvents: "none",
+          }}
+        >
+          <motion.span
+            aria-hidden="true"
+            initial={{ x: ARRIVAL.sweep.fromX, opacity: 0 }}
+            animate={
+              isArrivalAnimating
+                ? { x: ARRIVAL.sweep.toX, opacity: [0, 1, 0] }
+                : { x: ARRIVAL.sweep.fromX, opacity: 0 }
+            }
+            transition={{
+              duration: ARRIVAL.sweep[isMobile ? "mobileDuration" : "desktopDuration"],
+              delay: ARRIVAL.sweep.delay,
+              ease: ARRIVAL.ease,
+            }}
+            style={{
+              position: "absolute",
+              zIndex: 0,
+              insetBlock: 0,
+              left: 0,
+              width: ARRIVAL.sweep.width,
+              background: `linear-gradient(105deg, transparent, ${arrivalSweep}, transparent)`,
+              pointerEvents: "none",
+              borderRadius: "inherit",
+              willChange: isArrivalAnimating ? "transform, opacity" : undefined,
+            }}
+          />
+        </span>
+      )}
+      <motion.span
+        aria-hidden="true"
+        initial={{ opacity: 0 }}
+        animate={
+          isArrivalAnimating
+            ? { opacity: [0, 1, 0] }
+            : { opacity: 0 }
+        }
+        transition={{
+          duration: reducedMotion ? ARRIVAL.reducedDuration : glowDuration,
+          times: reducedMotion
+            ? [0, 0.5, 1]
+            : [0, ARRIVAL.glow.fadeInDuration / glowDuration, 1],
+          ease: reducedMotion ? "easeInOut" : "easeInOut",
+        }}
+        onAnimationComplete={() => {
+          if (reducedMotion && isArrivalAnimating) {
+            setIsArrivalAnimating(false);
+          }
+        }}
+        style={{
+          position: "absolute",
+          zIndex: 0,
+          inset: 0,
+          border: `1px solid ${arrivalRing}`,
+          borderRadius: "inherit",
+          boxShadow: reducedMotion
+            ? "none"
+            : `0 6px 20px rgba(${arrivalRgb},${glowAlpha})`,
+          pointerEvents: "none",
+          willChange: isArrivalAnimating ? "opacity" : undefined,
+        }}
+      />
+      <div className={styles.postMeta} style={{ position: "relative", zIndex: 1 }}>
         <div
           className={styles.postIdentity}
           style={{
             minWidth: 0,
+            maxWidth: "calc(100% - calc(var(--u) * 65.68))",
             flex: "0 1 auto",
             gap: "0.5em",
           }}
         >
-          <span className={`${styles.postAvatar} ${styles[`avatar${post.avatar}`]}`}>
+          <motion.span
+            className={`${styles.postAvatar} ${styles[`avatar${post.avatar}`]}`}
+            initial={reducedMotion ? false : { scale: MOTION.avatarScale }}
+            animate={{ scale: 1 }}
+            transition={{
+              duration: MOTION.partDuration,
+              ease: MOTION.ease,
+              delay: MOTION.stagger,
+            }}
+          >
             {post.initials}
-          </span>
-          <span
+          </motion.span>
+          <motion.span
             className={styles.postHandle}
             style={{
               minWidth: 0,
@@ -171,186 +352,255 @@ function PhonePost({
               paddingBlock: "0.22em",
               marginBlock: "-0.22em",
             }}
+            initial={
+              reducedMotion
+                ? false
+                : { opacity: 0, x: MOTION.labelOffset }
+            }
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: MOTION.partDuration,
+              ease: MOTION.ease,
+              delay: MOTION.stagger * 2,
+            }}
           >
             {post.handle}
-          </span>
-          <AnimatePresence mode="wait" initial={false}>
+          </motion.span>
+          <AnimatePresence mode="wait">
             <motion.span
               key={post.time}
               className={styles.postTime}
               style={{ flex: "0 0 auto", whiteSpace: "nowrap" }}
-              initial={reducedMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={
+                reducedMotion
+                  ? false
+                  : { opacity: 0, x: MOTION.labelOffset }
+              }
+              animate={{ opacity: 1, x: 0 }}
+              exit={
+                reducedMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, x: MOTION.labelOffset }
+              }
               transition={{
-                duration: reducedMotion ? 0 : FEED_TIMING.MOTION.COUNT / 1000,
+                duration: reducedMotion ? 0 : MOTION.partDuration,
+                ease: MOTION.ease,
+                delay: MOTION.stagger * 3,
               }}
             >
               {post.time}
             </motion.span>
           </AnimatePresence>
         </div>
-        <span
+        <motion.span
           className={styles.postActions}
           style={{
-            flex: "0 0 auto",
-            marginLeft: "auto",
-            gap: "0.3em",
+            position: "absolute",
+            zIndex: 2,
+            top: "50%",
+            right: "calc(var(--u) * 11.24)",
+            width: "calc(var(--u) * 52.44)",
+            height: "calc(var(--u) * 17.55)",
+            display: "block",
+            flex: "none",
+            margin: 0,
+            gap: 0,
+            transform: "translateY(-50%)",
+          }}
+          initial={reducedMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            duration: MOTION.partDuration,
+            ease: MOTION.ease,
+            delay: MOTION.stagger * 6,
           }}
         >
           <span
             className={styles.postAction}
-            style={{ flex: "0 0 auto", gap: 0 }}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: "50%",
+              width: "calc(var(--u) * 10.48)",
+              height: "calc(var(--u) * 10.48)",
+              display: "block",
+              flex: "none",
+              gap: 0,
+              transform: "translateY(-50%)",
+            }}
           >
             <motion.span
               className={`${styles.commentIcon} ${post.comments > 0 ? styles.iconTeal : styles.iconGrey}`}
               animate={commentIconControls}
               style={{
+                width: "100%",
+                height: "100%",
                 transition: reducedMotion
                   ? "none"
-                  : `background-color ${FEED_TIMING.MOTION.ICON_COLOR / 1000}s`,
+                  : `background-color ${MOTION.colorDuration}s`,
               }}
             />
-            <AnimatePresence mode="wait">
-              {post.comments > 0 ? (
-                reducedMotion ? (
-                  <small className={styles.countTeal} style={countStyle}>
-                    {post.comments}
-                  </small>
-                ) : (
-                  <motion.small
-                    key={`${post.id}-comments-${post.comments}`}
-                    className={styles.countTeal}
-                    style={countStyle}
-                    initial={{ y: 8, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -8, opacity: 0 }}
-                    transition={{ duration: FEED_TIMING.MOTION.COUNT / 1000 }}
-                  >
-                    {post.comments}
-                  </motion.small>
-                )
-              ) : (
-                <small className={styles.countTeal} style={{ ...countStyle, visibility: "hidden" }}>
-                  0
-                </small>
-              )}
-            </AnimatePresence>
+            <CountSlot
+              value={post.comments}
+              className={styles.countTeal}
+              reducedMotion={reducedMotion}
+            />
           </span>
           <span
             className={styles.postAction}
-            style={{ flex: "0 0 auto", gap: 0 }}
+            style={{
+              position: "absolute",
+              left: "calc(var(--u) * 19.18)",
+              top: "50%",
+              width: "calc(var(--u) * 14.13)",
+              height: "calc(var(--u) * 14.13)",
+              display: "block",
+              flex: "none",
+              gap: 0,
+              transform: "translateY(-50%)",
+            }}
           >
             <motion.span
               className={`${styles.upvoteIcon} ${post.upvotes > 0 ? styles.iconOrange : styles.iconGrey}`}
               animate={upvoteIconControls}
               style={{
+                width: "100%",
+                height: "100%",
                 WebkitMaskImage: `url("${post.upvotes > 0 ? "/icons/upvote-fill.svg" : "/icons/upvote-icon.svg"}")`,
                 maskImage: `url("${post.upvotes > 0 ? "/icons/upvote-fill.svg" : "/icons/upvote-icon.svg"}")`,
                 transition: reducedMotion
                   ? "none"
-                  : `background-color ${FEED_TIMING.MOTION.ICON_COLOR / 1000}s`,
+                  : `background-color ${MOTION.colorDuration}s`,
               }}
             />
-            <AnimatePresence mode="wait">
-              {post.upvotes > 0 ? (
-                reducedMotion ? (
-                  <small className={styles.countOrange} style={countStyle}>
-                    {post.upvotes}
-                  </small>
-                ) : (
-                  <motion.small
-                    key={`${post.id}-upvotes-${post.upvotes}`}
-                    className={styles.countOrange}
-                    style={countStyle}
-                    initial={{ y: 8, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -8, opacity: 0 }}
-                    transition={{ duration: FEED_TIMING.MOTION.COUNT / 1000 }}
-                  >
-                    {post.upvotes}
-                  </motion.small>
-                )
-              ) : (
-                <small className={styles.countOrange} style={{ ...countStyle, visibility: "hidden" }}>
-                  0
-                </small>
-              )}
-            </AnimatePresence>
+            <CountSlot
+              value={post.upvotes}
+              className={styles.countOrange}
+              reducedMotion={reducedMotion}
+            />
           </span>
           <span
             className={styles.postAction}
-            style={{ flex: "0 0 auto", gap: 0 }}
+            style={{
+              position: "absolute",
+              left: "calc(var(--u) * 41.96)",
+              top: "50%",
+              width: "calc(var(--u) * 10.48)",
+              height: "calc(var(--u) * 10.48)",
+              display: "block",
+              flex: "none",
+              gap: 0,
+              transform: "translateY(-50%)",
+            }}
           >
             <motion.span
-              className={`${styles.flagIcon} ${post.flagged ? styles.iconRed : styles.iconGrey}`}
+              className={`${styles.flagIcon} ${post.flagCount > 0 ? styles.iconRed : styles.iconGrey}`}
               animate={flagIconControls}
               style={{
+                width: "100%",
+                height: "100%",
                 transition: reducedMotion
                   ? "none"
-                  : `background-color ${FEED_TIMING.MOTION.ICON_COLOR / 1000}s`,
+                  : `background-color ${MOTION.colorDuration}s`,
               }}
             />
-            {post.flagCount > 0 ? (
-              reducedMotion ? (
-                <small className={styles.countRed} style={countStyle}>
-                  {post.flagCount}
-                </small>
-              ) : (
-                <AnimatePresence mode="wait">
-                  <motion.small
-                    key={`${post.id}-flags-${post.flagCount}`}
-                    className={styles.countRed}
-                    style={countStyle}
-                    initial={{ y: 8, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -8, opacity: 0 }}
-                    transition={{ duration: FEED_TIMING.MOTION.COUNT / 1000 }}
-                  >
-                    {post.flagCount}
-                  </motion.small>
-                </AnimatePresence>
-              )
-            ) : (
-              <small className={styles.countRed} style={{ ...countStyle, visibility: "hidden" }}>
-                0
-              </small>
-            )}
+            <CountSlot
+              value={post.flagCount}
+              className={styles.countRed}
+              reducedMotion={reducedMotion}
+            />
           </span>
-        </span>
+        </motion.span>
       </div>
-      <div className={styles.postBody}>
-        <p className={styles.postMessage}>{post.message}</p>
-        <span
-          className={`${styles.chip} ${styles[`chip${post.tag}`]}`}
-          style={{ transition: reducedMotion ? "none" : "background-color 0.3s" }}
+      <div className={styles.postBody} style={{ position: "relative", zIndex: 1 }}>
+        <motion.p
+          className={styles.postMessage}
+          initial={reducedMotion ? false : { opacity: 0, y: MOTION.messageOffset }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: MOTION.partDuration,
+            ease: MOTION.ease,
+            delay: MOTION.stagger * 4,
+          }}
         >
-          {post.tag}
-        </span>
+          {post.message}
+        </motion.p>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={post.tag}
+            className={`${styles.chip} ${styles[`chip${post.tag}`]}`}
+            initial={
+              reducedMotion
+                ? false
+                : { opacity: 0, scale: MOTION.chipScale }
+            }
+            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: MOTION.chipScale }}
+            transition={
+              reducedMotion
+                ? { duration: MOTION.partDuration, ease: MOTION.ease }
+                : { ...MOTION.soft, delay: MOTION.stagger * 5 }
+            }
+          >
+            {post.tag}
+          </motion.span>
+        </AnimatePresence>
       </div>
       <AnimatePresence>
         {post.flagged && (
           <motion.div
             className={styles.flagBanner}
-            initial={reducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            animate={reducedMotion ? { opacity: 1 } : { height: "auto", opacity: 1 }}
-            exit={reducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            initial={
+              reducedMotion
+                ? { opacity: 0 }
+                : { height: 0, opacity: 0, y: MOTION.bannerOffset }
+            }
+            animate={
+              reducedMotion
+                ? { opacity: 1 }
+                : { height: "auto", opacity: 1, y: 0 }
+            }
+            exit={
+              reducedMotion
+                ? { opacity: 0 }
+                : { height: 0, opacity: 0, y: MOTION.bannerOffset }
+            }
             transition={
               reducedMotion
-                ? { duration: 0.01 }
+                ? { duration: MOTION.partDuration, ease: MOTION.ease }
                 : {
-                    height: {
-                      duration: FEED_TIMING.MOTION.BANNER / 1000,
-                      ease: [0.22, 1, 0.36, 1],
-                    },
-                    opacity: {
-                      duration: FEED_TIMING.MOTION.BANNER / 1000,
-                      ease: [0.22, 1, 0.36, 1],
-                    },
+                    height: MOTION.soft,
+                    opacity: { duration: MOTION.partDuration, ease: MOTION.ease },
+                    y: { duration: MOTION.partDuration, ease: MOTION.ease },
                   }
             }
-            style={{ overflow: "hidden", animation: "none", gridTemplateRows: "none" }}
+            style={{
+              overflow: "hidden",
+              animation: "none",
+              gridTemplateRows: "none",
+              position: "relative",
+              zIndex: 1,
+            }}
           >
+            <motion.span
+              aria-hidden="true"
+              initial={reducedMotion ? false : { scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{
+                duration: MOTION.bannerBarDuration,
+                ease: MOTION.ease,
+              }}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "calc(var(--u) * 1.5)",
+                backgroundColor: "#ff383c",
+                transformOrigin: "left",
+                pointerEvents: "none",
+              }}
+            />
             <span className={styles.flagBannerInner}>
               <span className={styles.flagBannerIcon} />
               This post has been flagged for {post.flagReason}
@@ -365,10 +615,14 @@ function PhonePost({
 export default function PhoneLiveFeed() {
   const phoneRef = useRef<HTMLDivElement>(null);
   const reducedMotion = Boolean(useReducedMotion());
+  const rotateX = useSpring(useMotionValue(0), MOTION.tiltSpring);
+  const rotateY = useSpring(useMotionValue(0), MOTION.tiltSpring);
   const [isInView, setIsInView] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const posts = useFeedScript(isInView && isDocumentVisible);
+  const { posts, isExiting, cycle } = useFeedScript(
+    isInView && isDocumentVisible,
+  );
 
   useEffect(() => {
     const phone = phoneRef.current;
@@ -385,12 +639,62 @@ export default function PhoneLiveFeed() {
   }, []);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
     const updateMobile = () => setIsMobile(mediaQuery.matches);
     updateMobile();
     mediaQuery.addEventListener("change", updateMobile);
     return () => mediaQuery.removeEventListener("change", updateMobile);
   }, []);
+
+  useEffect(() => {
+    const phone = phoneRef.current;
+    if (!phone || reducedMotion || isMobile) return;
+
+    const hoverQuery = window.matchMedia(
+      "(min-width: 769px) and (hover: hover) and (pointer: fine)",
+    );
+    if (!hoverQuery.matches) return;
+
+    let frame: number | null = null;
+    let nextRotateX = 0;
+    let nextRotateY = 0;
+
+    const scheduleTilt = (event: PointerEvent) => {
+      const bounds = phone.getBoundingClientRect();
+      if (!bounds.width || !bounds.height) return;
+
+      const x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+      const y = ((event.clientY - bounds.top) / bounds.height) * 2 - 1;
+      nextRotateX = -y * MOTION.tiltMax.x;
+      nextRotateY = x * MOTION.tiltMax.y;
+
+      if (frame === null) {
+        frame = window.requestAnimationFrame(() => {
+          frame = null;
+          rotateX.set(nextRotateX);
+          rotateY.set(nextRotateY);
+        });
+      }
+    };
+
+    const resetTilt = () => {
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+      }
+      rotateX.set(0);
+      rotateY.set(0);
+    };
+
+    phone.addEventListener("pointermove", scheduleTilt);
+    phone.addEventListener("pointerleave", resetTilt);
+
+    return () => {
+      phone.removeEventListener("pointermove", scheduleTilt);
+      phone.removeEventListener("pointerleave", resetTilt);
+      resetTilt();
+    };
+  }, [isMobile, reducedMotion, rotateX, rotateY]);
 
   useEffect(() => {
     const updateVisibility = () => {
@@ -405,13 +709,26 @@ export default function PhoneLiveFeed() {
   }, []);
 
   return (
-    <div className={styles.phone} ref={phoneRef} aria-hidden="true" inert>
+    <motion.div
+      className={styles.phone}
+      ref={phoneRef}
+      aria-hidden="true"
+      inert
+      style={{
+        rotateX,
+        rotateY,
+        transformPerspective: MOTION.perspective,
+        maxWidth: "100%",
+        marginInline: "auto",
+      }}
+    >
       <Image
         className={styles.frame}
         src="/icons/iphone.svg"
+        priority
         alt="fplaces live venue feed displayed on a phone"
         fill
-        sizes="(max-width: 767px) 280px, 250px"
+        sizes="(max-width: 768px) 86vw, 340px"
         unoptimized
       />
       <div className={styles.screen}>
@@ -511,22 +828,63 @@ export default function PhoneLiveFeed() {
             />
           </span>
           <span className={styles.filter}>
-            <Image src="/icons/Group.svg" alt="" width={14} height={13} />
+            <Image src="/icons/Group.svg" alt="" width={14} height={13} style={{ width: "auto" }} />
           </span>
         </nav>
-        <div className={styles.postArea}>
-          <div className={styles.postList}>
-            <AnimatePresence mode="popLayout" initial={false}>
-              {posts.map((post) => (
+        <div
+          className={styles.postArea}
+          style={{
+            flex: "1 1 auto",
+            minHeight: 0,
+            marginTop: 0,
+            paddingBottom: "calc(var(--u) * 10)",
+            boxSizing: "border-box",
+          }}
+        >
+          <AnimatePresence initial={false} mode="wait">
+            {!isExiting && posts.length > 0 ? (
+              <motion.div
+                key={`story-${cycle}`}
+                className={styles.postList}
+                initial={false}
+                animate={
+                  reducedMotion
+                    ? { opacity: 1 }
+                    : { opacity: 1, y: 0, filter: MOTION.clearFilter }
+                }
+                exit={
+                  reducedMotion
+                    ? { opacity: 0 }
+                    : {
+                        opacity: 0,
+                        y: MOTION.exitOffset,
+                        filter: `blur(${MOTION.exitBlur}px)`,
+                      }
+                }
+                transition={{
+                  duration: MOTION.clearDuration,
+                  ease: MOTION.ease,
+                }}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-end",
+                  rowGap: "calc(var(--u) * 8)",
+                  WebkitMaskImage: MOTION.feedMask,
+                  maskImage: MOTION.feedMask,
+                }}
+              >
+                {posts.map((post) => (
                 <PhonePost
                   key={post.id}
                   post={post}
                   reducedMotion={reducedMotion}
                   isMobile={isMobile}
                 />
-              ))}
-            </AnimatePresence>
-          </div>
+                ))}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
         <div className={styles.composer}>
           <div className={styles.composerRow}>
@@ -580,6 +938,6 @@ export default function PhoneLiveFeed() {
         </nav>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

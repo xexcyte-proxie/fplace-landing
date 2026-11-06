@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import {
@@ -50,7 +50,9 @@ const LIGHT = {
 
 type VenueLightState = {
   frame: number | null;
+  pulseTimeout: number | null;
   pointerInside: boolean;
+  touchPulse: boolean;
   initialized: boolean;
   x: number;
   y: number;
@@ -176,7 +178,7 @@ function VenueMotionCard({
           : undefined
       }
     >
-      {desktop && !reducedMotion ? (
+      {!reducedMotion ? (
         <span className="venue-card-light" aria-hidden="true" />
       ) : null}
       <motion.span
@@ -603,7 +605,9 @@ export default function Home() {
   const rowLightRef = useRef<HTMLSpanElement>(null);
   const lightState = useRef<VenueLightState>({
     frame: null,
+    pulseTimeout: null,
     pointerInside: false,
+    touchPulse: false,
     initialized: false,
     x: 0,
     y: 0,
@@ -634,7 +638,9 @@ export default function Home() {
     return () => {
       const { frame } = state;
       if (frame !== null) window.cancelAnimationFrame(frame);
+      if (state.pulseTimeout !== null) window.clearTimeout(state.pulseTimeout);
       state.frame = null;
+      state.pulseTimeout = null;
     };
   }, []);
 
@@ -642,8 +648,11 @@ export default function Home() {
     if (desktopMotion && !reducedMotion) return;
     const state = lightState.current;
     if (state.frame !== null) window.cancelAnimationFrame(state.frame);
+    if (state.pulseTimeout !== null) window.clearTimeout(state.pulseTimeout);
     state.frame = null;
+    state.pulseTimeout = null;
     state.pointerInside = false;
+    state.touchPulse = false;
     state.initialized = false;
     state.x = 0;
     state.y = 0;
@@ -665,7 +674,7 @@ export default function Home() {
   const animateVenueLight = () => {
     const state = lightState.current;
     state.frame = null;
-    if (!desktopMotion || reducedMotion) return;
+    if ((!desktopMotion && !state.touchPulse) || reducedMotion) return;
 
     const row = rowRef.current;
     const glow = rowLightRef.current;
@@ -715,6 +724,8 @@ export default function Home() {
       nextCardValues.every(({ settled: cardSettled }) => cardSettled);
     if (!settled) {
       state.frame = window.requestAnimationFrame(animateVenueLight);
+    } else if (!state.pointerInside) {
+      state.touchPulse = false;
     }
   };
 
@@ -750,6 +761,30 @@ export default function Home() {
     lightState.current.pointerInside = false;
     rowRef.current?.style.setProperty("--light-opacity", "0");
     scheduleVenueLight();
+  };
+
+  const pulseVenueLight = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (desktopMotion || reducedMotion || event.pointerType !== "touch") return;
+    const row = rowRef.current;
+    if (!row || !rowLightRef.current) return;
+    const bounds = row.getBoundingClientRect();
+    const state = lightState.current;
+    if (state.pulseTimeout !== null) window.clearTimeout(state.pulseTimeout);
+    state.targetX = event.clientX - bounds.left;
+    state.targetY = event.clientY - bounds.top;
+    state.x = state.targetX;
+    state.y = state.targetY;
+    state.initialized = true;
+    state.pointerInside = true;
+    state.touchPulse = true;
+    row.style.setProperty("--light-opacity", "1");
+    scheduleVenueLight();
+    state.pulseTimeout = window.setTimeout(() => {
+      state.pulseTimeout = null;
+      state.pointerInside = false;
+      row.style.setProperty("--light-opacity", "0");
+      scheduleVenueLight();
+    }, 420);
   };
 
   useEffect(() => {
@@ -965,15 +1000,14 @@ export default function Home() {
             } as CSSProperties
           }
           onPointerMove={moveVenueRow}
+          onPointerDown={pulseVenueLight}
           onPointerLeave={leaveVenueRow}
         >
-          {desktopMotion && !reducedMotion ? (
-            <span
-              ref={rowLightRef}
-              className="venue-row-light"
-              aria-hidden="true"
-            />
-          ) : null}
+          <span
+            ref={rowLightRef}
+            className="venue-row-light"
+            aria-hidden="true"
+          />
           <motion.div
             className="venue-grid"
             aria-label="Types of venues"

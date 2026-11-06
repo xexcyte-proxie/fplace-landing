@@ -1,41 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 
+export const TEMPO = 0.55;
+
 export const FEED_TIMING = {
   ARRIVAL_MS: 4500,
   JITTER: { MIN: -500, MAX: 700 },
   FIRST_POST_DELAY: 700,
-  MAX_VISIBLE: 5,
+  HOLD_AFTER_END_MS: 5000,
+  CLEAR_MS: 500,
+  RESTART_DELAY_MS: 900,
+  ENTRY_FROM: "below" as "below" | "left" | "above",
   MINUTE_MS: 12000,
-  HIGHLIGHT_MS: 1400,
+  FLAG_BANNER_MS: 450,
   ACTIVITY: {
     FIRST_REACTION_MS: { MIN: 2200, MAX: 3800 },
     TICK_GAP_MS: { MIN: 900, MAX: 2400, GROWTH: 1.3, MAX_GAP: 4200 },
     FLAG_GAP_MS: { MIN: 1200, MAX: 2600 },
     MIN_GLOBAL_TICK_GAP_MS: 600,
     COUNT_JUMPS: { TWO_CHANCE: 0.25, THREE_CHANCE: 0.08 },
-    CLEAN_POST_CHANCE: 0.25,
-    UPVOTES: { MIN: 3, MAX: 18 },
-    COMMENTS: { MIN: 2, MAX: 9 },
-    FLAGS: { MIN: 15, MAX: 25, FIRST_BANNER_DELAY_MS: 700 },
-  },
-  MOTION: {
-    ENTRY_SPRING: { STIFFNESS: 260, DAMPING: 24, MASS: 0.9 },
-    ENTRY_DELAY: 180,
-    LAYOUT_SPRING: { STIFFNESS: 300, DAMPING: 32 },
-    ENTRY_OPACITY: 400,
-    ENTRY_FILTER: 450,
-    EXIT: 350,
-    COUNT: 220,
-    ICON_SPRING: { STIFFNESS: 420, DAMPING: 16, MASS: 0.45 },
-    ICON_COLOR: 250,
-    BANNER: 450,
+    FLAGS: { FIRST_BANNER_DELAY_MS: 700 },
   },
 } as const;
 
-export const MINUTE_MS = FEED_TIMING.MINUTE_MS;
+export const MINUTE_MS = scaledTiming(FEED_TIMING.MINUTE_MS);
 
 export type FeedTag = "Lines" | "Park" | "Food" | "Crowd" | "Hype" | "Flagged";
-export type FeedStory = "clean" | "upvotes" | "comments" | "mixed" | "flagged";
+export type FeedStory = "clean" | "upvotes" | "comments" | "flagged";
 export type FeedMetric = "upvotes" | "comments";
 
 export type FeedPost = {
@@ -53,6 +43,12 @@ export type FeedPost = {
   flagCount: number;
   flagReason: string;
   story: FeedStory;
+};
+
+export type FeedScriptState = {
+  posts: FeedPost[];
+  isExiting: boolean;
+  cycle: number;
 };
 
 type FeedTemplate = Pick<FeedPost, "handle" | "initials" | "message" | "tag">;
@@ -76,42 +72,12 @@ type FeedScheduler = {
 const STARTERS: (FeedTemplate & {
   avatar: string;
   story: FeedStory;
-  ageMinutes: number;
 })[] = [
-  { handle: "@Nekky_lj232", initials: "NI", avatar: "orange", message: "Line is moving slowly at Gate A, about 15 mins wait", tag: "Lines", story: "clean", ageMinutes: 15 },
-  { handle: "@Keith", initials: "KH", avatar: "brown", message: "Parking lot B is almost full. There are still spaces around Parking C", tag: "Park", story: "upvotes", ageMinutes: 10 },
-  { handle: "@Tom", initials: "TM", avatar: "green", message: "I just tried the Burger at Pit chops. It tastes great", tag: "Food", story: "comments", ageMinutes: 9 },
-  { handle: "@Jane_hys21", initials: "JH", avatar: "blue", message: "Does anyone know if the elevator on this level is working? Need to get up with a stroller", tag: "Crowd", story: "mixed", ageMinutes: 9 },
-  { handle: "@Charles", initials: "CS", avatar: "purple", message: "People at the North Entrance should push through the barriers. Security can't stop everyone.", tag: "Flagged", story: "flagged", ageMinutes: 4 },
+  { handle: "@Nekky_lj232", initials: "NI", avatar: "orange", message: "Line is moving slowly at Gate A, about 15 mins wait", tag: "Lines", story: "clean" },
+  { handle: "@Keith", initials: "KH", avatar: "brown", message: "Parking lot B is almost full. There are still spaces around Parking C", tag: "Park", story: "upvotes" },
+  { handle: "@Tom", initials: "TM", avatar: "green", message: "I just tried the Burger at Pit chops. It tastes great", tag: "Food", story: "comments" },
+  { handle: "@Charles", initials: "CS", avatar: "purple", message: "People at the North Entrance should push through the barriers. Security can't stop everyone.", tag: "Flagged", story: "flagged" },
 ];
-
-const POOL: FeedTemplate[] = [
-  { handle: "@Amara_09", initials: "AM", message: "The band just walked out, the whole south stand is on its feet", tag: "Hype" },
-  { handle: "@Dayo_k", initials: "DK", message: "Jollof and grilled chicken at Gate C stand is worth every minute in line", tag: "Food" },
-  { handle: "@Mia_s22", initials: "MS", message: "Gate B security line is moving fast now, under 5 mins", tag: "Lines" },
-  { handle: "@GateMara", initials: "GM", message: "Line at Gate C is moving quickly now", tag: "Lines" },
-  { handle: "@SnackScout", initials: "SS", message: "Short queue for pretzels by section 104", tag: "Food" },
-  { handle: "@LotUpdate", initials: "LU", message: "North parking still has open rows near the shuttle", tag: "Park" },
-  { handle: "@BlueSection", initials: "BS", message: "Crowd is building near the east concourse", tag: "Crowd" },
-  { handle: "@StadiumBeat", initials: "SB", message: "The whole section is on its feet for warmups", tag: "Hype" },
-  { handle: "@NoraAtGate", initials: "NG", message: "No wait at the south entrance right now", tag: "Lines" },
-  { handle: "@FoodFinder", initials: "FF", message: "Burger stand beside Gate 2 has plenty ready", tag: "Food" },
-  { handle: "@GarageGuide", initials: "GG", message: "West garage has open spaces by the ramp", tag: "Park" },
-  { handle: "@ConcourseCam", initials: "CC", message: "The upper walkway is clear by section 110", tag: "Crowd" },
-  { handle: "@ChantCorner", initials: "CC", message: "The student section has the whole stand singing", tag: "Hype" },
-  { handle: "@GateScout", initials: "GS", message: "Gate A scanners are moving steadily", tag: "Lines" },
-  { handle: "@TacoTrail", initials: "TT", message: "Tacos at the west stand are fresh and fast", tag: "Food" },
-  { handle: "@CarSpotter", initials: "CS", message: "Spaces available on level three of the garage", tag: "Park" },
-  { handle: "@CrowdGuide", initials: "CG", message: "Less crowded route is along the south walkway", tag: "Crowd" },
-  { handle: "@BigPlay", initials: "BP", message: "The band just came out and the place is loud", tag: "Hype" },
-];
-
-const POOL_STORIES: FeedStory[] = ["upvotes", "comments", "mixed", "flagged"];
-const AVATARS = ["orange", "brown", "green", "blue", "purple"];
-
-function avatarFor(handle: string) {
-  return AVATARS[(handle.charCodeAt(1) || 0) % AVATARS.length];
-}
 
 function labelForAge(ageMinutes: number) {
   return ageMinutes < 1 ? "now" : `${ageMinutes}m ago`;
@@ -120,6 +86,27 @@ function labelForAge(ageMinutes: number) {
 function jitterFor(index: number) {
   const { MIN, MAX } = FEED_TIMING.JITTER;
   return MIN + ((index * 7919) % (MAX - MIN + 1));
+}
+
+function scaledTiming(milliseconds: number, minimum = 0) {
+  return Math.max(minimum, Math.round(milliseconds * TEMPO));
+}
+
+export function scaleFeedTiming(milliseconds: number, minimum = 0) {
+  return scaledTiming(milliseconds, minimum);
+}
+
+function scaledRandomInt(
+  random: () => number,
+  min: number,
+  max: number,
+  minimum = 0,
+) {
+  return randomInt(
+    random,
+    scaledTiming(min, minimum),
+    scaledTiming(max, minimum),
+  );
 }
 
 function createSeededRandom(postIndex: number, loopNumber: number) {
@@ -224,23 +211,26 @@ function createPausableScheduler(): FeedScheduler {
   };
 }
 
-export function useFeedScript(enabled: boolean) {
+export function useFeedScript(enabled: boolean): FeedScriptState {
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [isExiting, setIsExiting] = useState(false);
+  const [cycle, setCycle] = useState(0);
   const postsRef = useRef<FeedPost[]>([]);
   const schedulerRef = useRef<FeedScheduler | null>(null);
 
   useEffect(() => {
     let arrivalIndex = 0;
-    let poolCursor = 0;
+    let storyLoop = 0;
+    let lastCountTickAt = Number.NEGATIVE_INFINITY;
     const scheduler = createPausableScheduler();
     schedulerRef.current = scheduler;
-    let lastCountTickAt = Number.NEGATIVE_INFINITY;
 
     const commit = (update: (current: FeedPost[]) => FeedPost[]) => {
       const next = update(postsRef.current);
       postsRef.current = next;
       setPosts(next);
     };
+    let spawnPost: () => void = () => {};
 
     const updatePost = (id: string, update: (post: FeedPost) => FeedPost) => {
       commit((current) =>
@@ -257,7 +247,7 @@ export function useFeedScript(enabled: boolean) {
       const fireWhenAllowed = () => {
         const remaining =
           lastCountTickAt +
-          FEED_TIMING.ACTIVITY.MIN_GLOBAL_TICK_GAP_MS -
+          scaledTiming(FEED_TIMING.ACTIVITY.MIN_GLOBAL_TICK_GAP_MS, 350) -
           scheduler.now();
         if (remaining > 0) {
           scheduler.schedule(remaining, fireWhenAllowed, owner);
@@ -278,10 +268,11 @@ export function useFeedScript(enabled: boolean) {
     ) => {
       let currentValue = 0;
       let elapsed = firstDelay;
-      let gap = randomInt(
+      let gap = scaledRandomInt(
         random,
         FEED_TIMING.ACTIVITY.TICK_GAP_MS.MIN,
         FEED_TIMING.ACTIVITY.TICK_GAP_MS.MAX,
+        350,
       );
       while (currentValue < target) {
         const chance = random();
@@ -305,11 +296,40 @@ export function useFeedScript(enabled: boolean) {
         if (currentValue < target) {
           elapsed += gap;
           gap = Math.min(
-            FEED_TIMING.ACTIVITY.TICK_GAP_MS.MAX_GAP,
-            Math.round(gap * FEED_TIMING.ACTIVITY.TICK_GAP_MS.GROWTH),
+            scaledTiming(FEED_TIMING.ACTIVITY.TICK_GAP_MS.MAX_GAP, 350),
+            Math.max(
+              350,
+              Math.round(gap * FEED_TIMING.ACTIVITY.TICK_GAP_MS.GROWTH),
+            ),
           );
         }
       }
+    };
+
+    const beginExit = () => {
+      setIsExiting(true);
+      postsRef.current.forEach((post) =>
+        scheduler.cancelOwner(`post:${post.id}`),
+      );
+      scheduler.schedule(
+        scaledTiming(FEED_TIMING.CLEAR_MS),
+        () => {
+          commit(() => []);
+          scheduler.schedule(
+            scaledTiming(FEED_TIMING.RESTART_DELAY_MS),
+            () => {
+              storyLoop += 1;
+              arrivalIndex = 0;
+              lastCountTickAt = Number.NEGATIVE_INFINITY;
+              setCycle(storyLoop);
+              setIsExiting(false);
+              scheduler.schedule(0, spawnPost, "arrivals");
+            },
+            "restart",
+          );
+        },
+        "clear",
+      );
     };
 
     const scheduleFlags = (
@@ -329,10 +349,11 @@ export function useFeedScript(enabled: boolean) {
         .filter((value, index, values) => index === 0 || value > values[index - 1]);
       milestones.push(target);
       let elapsed = firstDelay;
-      let gap = randomInt(
+      let gap = scaledRandomInt(
         random,
         FEED_TIMING.ACTIVITY.FLAG_GAP_MS.MIN,
         FEED_TIMING.ACTIVITY.FLAG_GAP_MS.MAX,
+        350,
       );
       milestones.forEach((value, index) => {
         const tickDelay = elapsed;
@@ -343,13 +364,20 @@ export function useFeedScript(enabled: boolean) {
           }));
           if (index === milestones.length - 1) {
             scheduler.schedule(
-              FEED_TIMING.ACTIVITY.FLAGS.FIRST_BANNER_DELAY_MS,
-              () =>
+              scaledTiming(FEED_TIMING.ACTIVITY.FLAGS.FIRST_BANNER_DELAY_MS),
+              () => {
                 updatePost(post.id, (current) => ({
                   ...current,
                   flagged: true,
                   tag: "Flagged",
-                })),
+                }));
+                scheduler.schedule(
+                  FEED_TIMING.FLAG_BANNER_MS +
+                    scaledTiming(FEED_TIMING.HOLD_AFTER_END_MS, 3000),
+                  beginExit,
+                  `post:${post.id}`,
+                );
+              },
               `post:${post.id}`,
             );
           }
@@ -357,172 +385,105 @@ export function useFeedScript(enabled: boolean) {
         if (index < milestones.length - 1) {
           elapsed += gap;
           gap = Math.min(
-            FEED_TIMING.ACTIVITY.TICK_GAP_MS.MAX_GAP,
-            Math.round(gap * FEED_TIMING.ACTIVITY.TICK_GAP_MS.GROWTH),
+            scaledTiming(FEED_TIMING.ACTIVITY.TICK_GAP_MS.MAX_GAP, 350),
+            Math.max(
+              350,
+              Math.round(gap * FEED_TIMING.ACTIVITY.TICK_GAP_MS.GROWTH),
+            ),
           );
         }
       });
     };
 
-    const scheduleEngagement = (
-      post: FeedPost,
-      random: () => number,
-      isStarter: boolean,
-    ) => {
-      const firstReactionDelay = () =>
-        randomInt(
-          random,
-          FEED_TIMING.ACTIVITY.FIRST_REACTION_MS.MIN,
-          FEED_TIMING.ACTIVITY.FIRST_REACTION_MS.MAX,
-        );
-      const upvoteTarget = () =>
-        post.handle === "@Keith"
-          ? 4
-          : randomInt(
-              random,
-              FEED_TIMING.ACTIVITY.UPVOTES.MIN,
-              FEED_TIMING.ACTIVITY.UPVOTES.MAX,
-            );
-      const commentTarget = () =>
-        post.handle === "@Tom"
-          ? 8
-          : randomInt(
-              random,
-              FEED_TIMING.ACTIVITY.COMMENTS.MIN,
-              FEED_TIMING.ACTIVITY.COMMENTS.MAX,
-            );
-
+    const scheduleEngagement = (post: FeedPost, random: () => number) => {
+      const firstReactionDelay = scaledRandomInt(
+        random,
+        FEED_TIMING.ACTIVITY.FIRST_REACTION_MS.MIN,
+        FEED_TIMING.ACTIVITY.FIRST_REACTION_MS.MAX,
+      );
       switch (post.story) {
         case "clean":
           return;
-        case "upvotes": {
-          const target = upvoteTarget();
+        case "upvotes":
           scheduleCount(
             post,
             "upvotes",
-            target,
-            firstReactionDelay(),
+            4,
+            firstReactionDelay,
             random,
           );
           return;
-        }
-        case "comments": {
-          const target = commentTarget();
+        case "comments":
           scheduleCount(
             post,
             "comments",
-            target,
-            firstReactionDelay(),
+            8,
+            firstReactionDelay,
             random,
           );
           return;
-        }
-        case "mixed": {
-          const upvotes = isStarter ? 2 : upvoteTarget();
-          const comments = isStarter ? 4 : commentTarget();
-          scheduleCount(post, "upvotes", upvotes, firstReactionDelay(), random);
-          scheduleCount(post, "comments", comments, firstReactionDelay(), random);
-          return;
-        }
-        case "flagged": {
-          const target =
-            post.handle === "@Charles"
-              ? 25
-              : randomInt(
-                  random,
-                  FEED_TIMING.ACTIVITY.FLAGS.MIN,
-                  FEED_TIMING.ACTIVITY.FLAGS.MAX,
-                );
-          scheduleFlags(post, target, firstReactionDelay(), random);
-        }
+        case "flagged":
+          scheduleFlags(post, 25, firstReactionDelay, random);
       }
     };
 
-    const spawnPost = () => {
+    spawnPost = () => {
+      if (arrivalIndex >= STARTERS.length) return;
+      const index = arrivalIndex;
+      const starter = STARTERS[index];
       arrivalIndex += 1;
-      const currentVisible = postsRef.current;
-      const isStarter = arrivalIndex <= STARTERS.length;
-      let template: FeedTemplate;
-      let story: FeedStory;
-      let avatar: string;
-      let ageMinutes = 0;
-      let activityRandom = createSeededRandom(arrivalIndex, 0);
-      let poolIndex = -1;
-
-      if (isStarter) {
-        const starter = STARTERS[arrivalIndex - 1];
-        template = starter;
-        story = starter.story;
-        avatar = starter.avatar;
-        ageMinutes = starter.ageMinutes;
-      } else {
-        let attempts = 0;
-        do {
-          poolIndex = poolCursor % POOL.length;
-          poolCursor += 1;
-          attempts += 1;
-          if (attempts > POOL.length) {
-            throw new Error("Unable to find a unique phone-feed post");
-          }
-        } while (
-          currentVisible.some((post) => post.handle === POOL[poolIndex].handle)
-        );
-        template = POOL[poolIndex];
-        const loopNumber = Math.floor(
-          (arrivalIndex - STARTERS.length - 1) / POOL.length,
-        );
-        activityRandom = createSeededRandom(arrivalIndex, loopNumber);
-        story =
-          activityRandom() < FEED_TIMING.ACTIVITY.CLEAN_POST_CHANCE
-            ? "clean"
-            : POOL_STORIES[
-                randomInt(activityRandom, 0, POOL_STORIES.length - 1)
-              ];
-        avatar = avatarFor(template.handle);
-      }
-
+      const random = createSeededRandom(index + 1, storyLoop);
       const post: FeedPost = {
-        ...template,
-        id: `post-${arrivalIndex}`,
-        avatar,
-        time: labelForAge(ageMinutes),
-        ageMinutes,
+        ...starter,
+        id: `story-${storyLoop}-post-${index + 1}`,
+        time: labelForAge(0),
+        ageMinutes: 0,
         comments: 0,
         upvotes: 0,
         flagged: false,
         flagCount: 0,
-        flagReason: story === "flagged" ? "inciting violence" : "",
-        story,
+        flagReason: starter.story === "flagged" ? "inciting violence" : "",
       };
 
-      const nextPosts = [post, ...currentVisible].slice(
-        0,
-        FEED_TIMING.MAX_VISIBLE,
-      );
-      const evicted = currentVisible.find(
-        (visiblePost) => !nextPosts.some((nextPost) => nextPost.id === visiblePost.id),
-      );
-      if (evicted) scheduler.cancelOwner(`post:${evicted.id}`);
-      commit(() => nextPosts);
-      scheduleEngagement(post, activityRandom, isStarter);
+      commit((current) => [...current, post]);
+      scheduleEngagement(post, random);
 
       const ageTick = () => {
         updatePost(post.id, (current) => {
           const ageMinutes = current.ageMinutes + 1;
           return { ...current, ageMinutes, time: labelForAge(ageMinutes) };
         });
-        scheduler.schedule(FEED_TIMING.MINUTE_MS, ageTick, `post:${post.id}`);
+        scheduler.schedule(
+          scaledTiming(FEED_TIMING.MINUTE_MS),
+          ageTick,
+          `post:${post.id}`,
+        );
       };
-      scheduler.schedule(FEED_TIMING.MINUTE_MS, ageTick, `post:${post.id}`);
-
       scheduler.schedule(
-        FEED_TIMING.ARRIVAL_MS + jitterFor(arrivalIndex),
-        spawnPost,
-        "arrivals",
+        scaledTiming(FEED_TIMING.MINUTE_MS),
+        ageTick,
+        `post:${post.id}`,
       );
+
+      if (arrivalIndex < STARTERS.length) {
+        scheduler.schedule(
+          Math.max(
+            2000,
+            scaledTiming(
+              FEED_TIMING.ARRIVAL_MS + jitterFor(arrivalIndex),
+            ),
+          ),
+          spawnPost,
+          "arrivals",
+        );
+      }
     };
 
-    scheduler.schedule(FEED_TIMING.FIRST_POST_DELAY, spawnPost, "arrivals");
+    scheduler.schedule(
+      scaledTiming(FEED_TIMING.FIRST_POST_DELAY),
+      spawnPost,
+      "arrivals",
+    );
 
     return () => {
       scheduler.dispose();
@@ -536,5 +497,5 @@ export function useFeedScript(enabled: boolean) {
     schedulerRef.current?.setEnabled(enabled);
   }, [enabled]);
 
-  return posts;
+  return { posts, isExiting, cycle };
 }
